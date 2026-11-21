@@ -1,6 +1,7 @@
 import type { Category, TransactionSource } from '@femate/shared';
 
 import type { IconName } from '@/components/Icon';
+import { t } from '@/i18n';
 
 export const categoryIcon: Record<Category, IconName> = {
   transport: 'transport',
@@ -23,7 +24,7 @@ export const sourceIcon: Record<TransactionSource, IconName> = {
   card: 'card',
 };
 
-export const sourceLabel: Record<TransactionSource, string> = {
+const SOURCE_EN: Record<TransactionSource, string> = {
   bank: 'Bank',
   manual: 'Typed',
   voice: 'Voice',
@@ -31,3 +32,5 @@ export const sourceLabel: Record<TransactionSource, string> = {
   agent: 'Agent',
   card: 'Card',
 };
+// t('Bank') t('Typed') t('Voice') t('SMS') t('Agent') t('Card')
+export const sourceLabel = new Proxy(SOURCE_EN, { get: (en, k: string) => t(en[k as TransactionSource] ?? k) }) as Record<TransactionSource, string>;

@@ -7,6 +7,7 @@ import { Card, IconTile, PressableScale, Text } from '@/components/ui';
 import { categoryIcon } from '@/lib/categories';
 import { useCurrency } from '@/lib/currency';
 import { formatMoney } from '@/lib/format';
+import { useT } from '@/i18n';
 import { useTheme } from '@/theme';
 
 /**
@@ -16,6 +17,7 @@ import { useTheme } from '@/theme';
 export function InsightCard({ insight, compact }: { insight: DailyInsight; compact?: boolean }) {
   const { c } = useTheme();
   const cur = useCurrency();
+  const { t: tr } = useT();
   const over = insight.status === 'over';
   const tint = over ? c.warnTint : c.positiveTint;
   const ink = over ? c.warnInk : c.positiveInk;
@@ -37,12 +39,12 @@ export function InsightCard({ insight, compact }: { insight: DailyInsight; compa
         >
           <Icon name={over ? 'trend' : 'check'} size={14} color={ink} strokeWidth={2.4} />
           <Text variant="caption" weight="700" style={{ color: ink }}>
-            {over ? 'Over plan' : 'On track'}
+            {over ? tr('Over plan') : tr('On track')}
           </Text>
         </View>
         <Icon name="bot" size={14} color={c.ai} strokeWidth={2.2} />
         <Text variant="caption" color="aiInk" weight="600">
-          Today’s check-in
+          {tr('Today’s check-in')}
         </Text>
         <View style={{ flex: 1 }} />
         {compact ? <Icon name="chevronRight" size={16} color={c.chevron} strokeWidth={2.4} /> : null}
@@ -66,7 +68,7 @@ export function InsightCard({ insight, compact }: { insight: DailyInsight; compa
                 <Text variant="callout">{t.text}</Text>
                 {t.saving > 0 ? (
                   <Text variant="footnote" color="positive" weight="600" tabular>
-                    Saves about {formatMoney(t.saving, cur)} this month
+                    {tr('Saves about {amount} this month', { amount: formatMoney(t.saving, cur) })}
                   </Text>
                 ) : null}
               </View>
@@ -81,7 +83,7 @@ export function InsightCard({ insight, compact }: { insight: DailyInsight; compa
   return (
     <PressableScale
       accessibilityRole="button"
-      accessibilityLabel={`${insight.headline} Open the assistant`}
+      accessibilityLabel={`${insight.headline} ${tr('Open the assistant')}`}
       onPress={() => router.push('/assistant')}
     >
       {body}

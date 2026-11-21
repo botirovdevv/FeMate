@@ -12,7 +12,9 @@ import { useCurrency } from '@/lib/currency';
 import { formatAmount, formatTime } from '@/lib/format';
 import { useActions, useAudit, useKillSwitch, usePermissions, useTransactions, useUpdatePermissions } from '@/lib/queries';
 import { space, useTheme } from '@/theme';
+import { useT } from '@/i18n';
 
+// t('Read-only') t('Advisor') t('Co-pilot') t('Autopilot') t('Agent') t('You') t('System') t('Allowed') t('Blocked') t('Info') t('Balances') t('Transactions') t('Own transfers')
 const levelName = { L0: 'Read-only', L1: 'Advisor', L2: 'Co-pilot', L3: 'Autopilot' } as const;
 const levelIcon: Record<keyof typeof levelName, IconName> = { L0: 'eye', L1: 'bulb', L2: 'shieldCheck', L3: 'rocket' };
 const actorIcon: Record<AuditEntry['actor'], IconName> = { agent: 'bot', user: 'user', system: 'cpu' };
@@ -31,6 +33,7 @@ const scopeMeta = {
 } as const;
 
 export default function Activity() {
+  const { t, tn } = useT();
   const cur = useCurrency();
   const { c } = useTheme();
   const perms = usePermissions();
@@ -84,18 +87,18 @@ export default function Activity() {
   };
 
   const statusText = stopped
-    ? 'Stopped by you'
+    ? t('Stopped by you')
     : p?.level === 'L3'
-      ? 'Active · moves money within limits'
+      ? t('Active · moves money within limits')
       : p?.level === 'L2'
-        ? 'Active · asks before moving money'
-        : 'Active · advice only';
+        ? t('Active · asks before moving money')
+        : t('Active · advice only');
 
   return (
     <Screen
       tabs
-      title="Agent"
-      right={<HeroButton icon="sliders" label="Change permissions" onPress={() => router.push({ pathname: '/connect-bank', params: { mode: 'edit' } })} />}
+      title={t("Agent")}
+      right={<HeroButton icon="sliders" label={t("Change permissions")} onPress={() => router.push({ pathname: '/connect-bank', params: { mode: 'edit' } })} />}
       refreshing={audit.isRefetching}
       onRefresh={() => void Promise.all([audit.refetch(), perms.refetch(), pending.refetch()])}
       hero={
@@ -106,7 +109,7 @@ export default function Activity() {
             </View>
             <View style={{ flex: 1, gap: 2 }}>
               <Text variant="title2" color="#FFFFFF">
-                {p ? `${levelName[p.level]} · ${p.level}` : '…'}
+                {p ? `${t(levelName[p.level])} · ${p.level}` : '…'}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: stopped ? '#FF6B61' : '#34C77B' }} />
@@ -119,10 +122,10 @@ export default function Activity() {
           <View style={{ gap: 10 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
               <Text variant="footnote" color="rgba(255,255,255,0.56)" tabular>
-                Moved today {formatAmount(usedToday, cur)} of {formatAmount(p?.dailyLimit ?? 0, cur)}
+                {t('Moved today {used} of {limit}', { used: formatAmount(usedToday, cur), limit: formatAmount(p?.dailyLimit ?? 0, cur) })}
               </Text>
               <Text variant="footnote" color="rgba(255,255,255,0.56)" tabular>
-                {formatAmount(p?.perActionLimit ?? 0, cur)} per action
+                {t('{amount} per action', { amount: formatAmount(p?.perActionLimit ?? 0, cur) })}
               </Text>
             </View>
             <SlateProgress value={p?.dailyLimit ? usedToday / p.dailyLimit : 0} onHero />
@@ -134,26 +137,26 @@ export default function Activity() {
         <Banner
           tone="warn"
           icon="shieldAlert"
-          title={`${pending.data.length} action${pending.data.length > 1 ? 's' : ''} waiting for you`}
-          subtitle="Tap to review"
+          title={tn('{n} action waiting for you|{n} actions waiting for you', pending.data.length)}
+          subtitle={t("Tap to review")}
           onPress={() => router.push({ pathname: '/action/[id]', params: { id: pending.data[0]!.id } })}
         />
       ) : null}
 
       <View style={{ gap: 10 }}>
-        <SectionTitle title="What it may see and do" />
+        <SectionTitle title={t("What it may see and do")} />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {(p?.scopes ?? []).map((sc) => (
             <View key={sc} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.card, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 18 }}>
               <Icon name={scopeMeta[sc].icon} size={15} color={c.label} strokeWidth={1.9} />
               <Text variant="footnote" weight="600">
-                {scopeMeta[sc].label}
+                {t(scopeMeta[sc].label)}
               </Text>
             </View>
           ))}
           {p && p.scopes.length === 0 ? (
             <Text variant="footnote" color="secondary">
-              Nothing yet. Connect the bank to give it access.
+              {t('Nothing yet. Connect the bank to give it access.')}
             </Text>
           ) : null}
         </View>
@@ -164,14 +167,14 @@ export default function Activity() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <Icon name="pause" size={22} color={c.dangerInk} strokeWidth={2.2} />
             <Text variant="headline" color="dangerInk">
-              Agent is stopped
+              {t('Agent is stopped')}
             </Text>
           </View>
           <Text variant="callout" color="body">
-            Pending transfers were rejected and every new action is blocked. When you turn it back on, it restarts at L1 Advisor.
+            {t('Pending transfers were rejected and every new action is blocked. When you turn it back on, it restarts at L1 Advisor.')}
           </Text>
           <PillButton
-            title="Turn back on at L1"
+            title={t("Turn back on at L1")}
             icon="refresh"
             loading={update.isPending}
             onPress={() => {
@@ -183,7 +186,7 @@ export default function Activity() {
       ) : (
         <View style={{ gap: 8 }}>
           <PillButton
-            title="Stop the agent now"
+            title={t("Stop the agent now")}
             icon="power"
             variant="danger"
             loading={kill.isPending}
@@ -194,7 +197,7 @@ export default function Activity() {
             }}
           />
           <Text variant="footnote" color="secondary" style={{ textAlign: 'center' }}>
-            Kill switch: cancels pending actions and blocks every new one.
+            {t('Kill switch: cancels pending actions and blocks every new one.')}
           </Text>
         </View>
       )}
@@ -202,12 +205,12 @@ export default function Activity() {
       {err ? <Notice text={err} /> : null}
 
       <View>
-        <SectionTitle title="Audit log" action={exported ? 'Exported' : 'Export JSON'} onAction={() => void exportLog()} />
-        {audit.isError ? <ErrorRow message="Couldn’t load the audit log." onRetry={() => void audit.refetch()} /> : null}
+        <SectionTitle title={t("Audit log")} action={exported ? t('Exported') : t('Export JSON')} onAction={() => void exportLog()} />
+        {audit.isError ? <ErrorRow message={t("Couldn’t load the audit log.")} onRetry={() => void audit.refetch()} /> : null}
         {audit.isLoading ? <ActivityIndicator color={c.secondary} style={{ paddingVertical: 24 }} /> : null}
         {audit.data && audit.data.items.length === 0 ? (
           <Text variant="callout" color="secondary" style={{ paddingVertical: 12 }}>
-            Nothing yet. Every agent decision and money move shows up here.
+            {t('Nothing yet. Every agent decision and money move shows up here.')}
           </Text>
         ) : null}
         {(audit.data?.items ?? []).map((e, i, all) => {
@@ -231,14 +234,14 @@ export default function Activity() {
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                   <Text variant="caption" weight="700" color={d.fg}>
-                    {decisionLabel[e.decision] ?? e.decision}
+                    {decisionLabel[e.decision] ? t(decisionLabel[e.decision]) : e.decision}
                   </Text>
                   <Text variant="caption" color="secondary">
                     ·
                   </Text>
                   <Icon name={actorIcon[e.actor] ?? 'info'} size={12} color={e.actor === 'agent' ? c.ai : c.secondary} strokeWidth={2.2} />
                   <Text variant="caption" color={e.actor === 'agent' ? c.aiInk : c.secondary}>
-                    {actorLabel[e.actor] ?? e.actor} · {e.permissionLevel}
+                    {actorLabel[e.actor] ? t(actorLabel[e.actor]) : e.actor} · {e.permissionLevel}
                   </Text>
                 </View>
               </View>

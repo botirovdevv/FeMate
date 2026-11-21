@@ -10,13 +10,14 @@ import { useCurrency } from '@/lib/currency';
 import { categoryLabel, formatAmount, formatMoney } from '@/lib/format';
 import { useAllTransactions } from '@/lib/queries';
 import { useTheme } from '@/theme';
+import { longDay, t, useT, type Lang } from '@/i18n';
 
-function dayTitle(d: Date, now = new Date()) {
+function dayTitle(d: Date, lang: Lang, now = new Date()) {
   const y = new Date(now);
   y.setDate(now.getDate() - 1);
-  if (d.toDateString() === now.toDateString()) return 'Today';
-  if (d.toDateString() === y.toDateString()) return 'Yesterday';
-  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  if (d.toDateString() === now.toDateString()) return t('Today', undefined, lang);
+  if (d.toDateString() === y.toDateString()) return t('Yesterday', undefined, lang);
+  return longDay(d, lang);
 }
 
 const hm = (iso: string) => {
@@ -25,6 +26,7 @@ const hm = (iso: string) => {
 };
 
 export default function Transactions() {
+  const { t: tr, lang } = useT();
   const cur = useCurrency();
   const { c } = useTheme();
   const txs = useAllTransactions();
@@ -37,25 +39,25 @@ export default function Transactions() {
       if (filter !== 'all' && t.category !== filter) continue;
       const d = new Date(t.occurredAt);
       const k = d.toDateString();
-      const g = map.get(k) ?? { title: dayTitle(d), total: 0, items: [] };
+      const g = map.get(k) ?? { title: dayTitle(d, lang), total: 0, items: [] };
       g.items.push(t);
       if (t.direction === 'out' && t.category !== 'transfer') g.total += t.amount;
       map.set(k, g);
     }
     return [...map.values()];
-  }, [txs.data, filter]);
+  }, [txs.data, filter, lang]);
 
   const shownOut = groups.reduce((n, g) => n + g.total, 0);
   return (
     <Screen
-      title="Transactions"
+      title={t("Transactions")}
       refreshing={txs.isRefetching}
       onRefresh={() => void txs.refetch()}
       back
       hero={
         <View style={{ gap: 2 }}>
           <Text variant="footnote" color="rgba(255,255,255,0.56)" style={{ fontSize: 14 }}>
-            {filter === 'all' ? 'Spent in this list' : `Spent on ${categoryLabel[filter].toLowerCase()}`}
+            {filter === 'all' ? t('Spent in this list') : t('Spent on: {category}', { category: categoryLabel[filter] })}
           </Text>
           <Text variant="largeTitle" color="#FFFFFF" tabular style={{ fontSize: 40, lineHeight: 48, letterSpacing: -1 }} numberOfLines={1} adjustsFontSizeToFit>
             {formatMoney(shownOut, cur)}
@@ -65,7 +67,7 @@ export default function Transactions() {
     >
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} style={{ marginHorizontal: -20 }}>
         <View style={{ width: 12 }} />
-        <Chip label="All" selected={filter === 'all'} onPress={() => setFilter('all')} />
+        <Chip label={t("All")} selected={filter === 'all'} onPress={() => setFilter('all')} />
         {cats.map((cat) => (
           <Chip key={cat} label={categoryLabel[cat]} icon={categoryIcon[cat]} selected={filter === cat} onPress={() => setFilter(cat)} />
         ))}
@@ -73,10 +75,10 @@ export default function Transactions() {
       </ScrollView>
 
       {txs.isLoading ? <ActivityIndicator color={c.secondary} style={{ paddingVertical: 24 }} /> : null}
-      {txs.isError ? <ErrorRow message="Couldn’t load your transactions." onRetry={() => void txs.refetch()} /> : null}
+      {txs.isError ? <ErrorRow message={t("Couldn’t load your transactions.")} onRetry={() => void txs.refetch()} /> : null}
       {!txs.isLoading && groups.length === 0 && !txs.isError ? (
         <Text variant="callout" color="secondary" style={{ textAlign: 'center', paddingVertical: 24 }}>
-          Nothing here yet.
+          {t('Nothing here yet.')}
         </Text>
       ) : null}
 
@@ -97,7 +99,7 @@ export default function Transactions() {
                 key={t.id}
                 icon={income ? 'plus' : categoryIcon[t.category]}
                 title={t.description}
-                subtitle={`${categoryLabel[t.category]} · ${hm(t.occurredAt)} · ${sourceLabel[t.source]}${t.familyId ? ' · Family' : ''}`}
+                subtitle={`${categoryLabel[t.category]} · ${hm(t.occurredAt)} · ${sourceLabel[t.source]}${t.familyId ? ` · ${tr('Family')}` : ''}`}
                 last={i === g.items.length - 1}
                 right={
                   <View style={{ alignItems: 'flex-end', gap: 2 }}>

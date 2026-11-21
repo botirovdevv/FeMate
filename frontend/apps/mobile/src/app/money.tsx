@@ -12,6 +12,7 @@ import { amountInputValue, formatAmount, formatMoney, parseAmountInput } from '@
 import { useKeyboardHeight } from '@/lib/useKeyboardHeight';
 import { useAccounts, useCard, useDeposit, useSetBalance, useTransfer } from '@/lib/queries';
 import { space, useTheme } from '@/theme';
+import { useT } from '@/i18n';
 
 type Mode = 'add' | 'move' | 'set';
 type AccountType = Account['type'];
@@ -20,6 +21,7 @@ const ACCOUNT_ICON: Record<AccountType, IconName> = { card: 'card', savings: 'sa
 const TYPES: AccountType[] = ['card', 'cash', 'savings'];
 
 // Common moves, one tap each.
+// t('ATM withdrawal') t('Savings → card') t('Card → savings') t('Cash → card') t('Salary') t('Gift') t('Sold something')
 const SHORTCUTS: { label: string; icon: IconName; from: AccountType; to: AccountType }[] = [
   { label: 'ATM withdrawal', icon: 'cash', from: 'card', to: 'cash' },
   { label: 'Savings → card', icon: 'card', from: 'savings', to: 'card' },
@@ -93,6 +95,7 @@ function AccountPicker({
 }
 
 export default function MoneySheet() {
+  const { t } = useT();
   const cur = useCurrency();
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
@@ -118,7 +121,7 @@ export default function MoneySheet() {
   const nameOf = (t: AccountType) => accounts.find((a) => a.type === t)?.name ?? t;
   const amount = parseAmountInput(text, cur);
 
-  // "Set balance" starts from what the app thinks is there (adjusting state during render, once).
+  // t("Set balance") starts from what the app thinks is there (adjusting state during render, once).
   if (mode === 'set' && !loadedSet && accounts.length) {
     setLoadedSet(true);
     setText(amountInputValue(balanceOf(target), cur));
@@ -131,7 +134,7 @@ export default function MoneySheet() {
   const submit = async () => {
     setError(null);
     try {
-      if (mode === 'add') await deposit.mutateAsync({ to, amount, ...(note ? { description: note } : {}) });
+      if (mode === 'add') await deposit.mutateAsync({ to, amount, ...(note ? { description: t(note) } : {}) });
       else if (mode === 'move') await transfer.mutateAsync({ from, to: moveTo, amount });
       else await setBalance.mutateAsync({ account: target, balance: amount });
       haptic('success');
@@ -144,37 +147,43 @@ export default function MoneySheet() {
     }
   };
 
-  const pickFrom = (t: AccountType) => {
-    setFrom(t);
-    if (t === moveTo) setMoveTo(TYPES.find((x) => x !== t)!);
+  const pickFrom = (acc: AccountType) => {
+    setFrom(acc);
+    if (acc === moveTo) setMoveTo(TYPES.find((x) => x !== acc)!);
   };
 
-  const title = { add: 'Add money', move: 'Move money', set: 'Update balance' }[mode];
+  const title = { add: t('Add money'), move: t('Move money'), set: t('Update balance') }[mode];
   const buttonTitle =
     mode === 'add'
-      ? `Add ${amount > 0 ? formatMoney(amount, cur) : ''} to ${nameOf(to)}`.replace('  ', ' ')
+      ? amount > 0
+        ? t('Add {amount} to {account}', { amount: formatMoney(amount, cur), account: nameOf(to) })
+        : t('Add to {account}', { account: nameOf(to) })
       : mode === 'move'
-        ? `Move ${amount > 0 ? formatMoney(amount, cur) : ''}`.trim()
-        : `Set ${nameOf(target)} to ${formatMoney(amount, cur)}`;
+        ? amount > 0
+          ? t('Move {amount}', { amount: formatMoney(amount, cur) })
+          : t('Move')
+        : t('Set {account} to {amount}', { account: nameOf(target), amount: formatMoney(amount, cur) });
 
   let hint: string;
   if (mode === 'add') {
     hint =
       to === 'card'
         ? sandbox || usingMock
-          ? 'Sandbox top-up: no real card is charged. The money is spendable with your FeMate card right away.'
-          : 'The amount is added to your card balance.'
+          ? t('Sandbox top-up: no real card is charged. The money is spendable with your FeMate card right away.')
+          : t('The amount is added to your card balance.')
         : to === 'cash'
-          ? 'Cash you got from outside your accounts, like salary paid in cash or a gift. Taking cash from an ATM is a move, not this.'
-          : 'Money paid straight into Savings from outside.';
+          ? t('Cash you got from outside your accounts, like salary paid in cash or a gift. Taking cash from an ATM is a move, not this.')
+          : t('Money paid straight into Savings from outside.');
   } else if (mode === 'move') {
-    hint = 'Only between your own accounts. It’s not counted as spending.';
+    hint = t('Only between your own accounts. It’s not counted as spending.');
   } else {
     const diff = amount - balanceOf(target);
     hint =
       diff === 0
-        ? `Count what’s really in your ${target === 'cash' ? 'wallet' : nameOf(target)} and type it here.`
-        : `That’s ${diff > 0 ? '+' : '−'}${formatMoney(Math.abs(diff), cur)}. FeMate records the difference as a correction, not as spending.`;
+        ? target === 'cash'
+          ? t('Count what’s really in your wallet and type it here.')
+          : t('Count what’s really in {account} and type it here.', { account: nameOf(target) })
+        : t('That’s {diff}. FeMate records the difference as a correction, not as spending.', { diff: `${diff > 0 ? '+' : '−'}${formatMoney(Math.abs(diff), cur)}` });
   }
 
   return (
@@ -189,9 +198,9 @@ export default function MoneySheet() {
 
       <Segmented<Mode>
         options={[
-          { value: 'add', label: 'Add' },
-          { value: 'move', label: 'Move' },
-          { value: 'set', label: 'Set balance' },
+          { value: 'add', label: t('Add') },
+          { value: 'move', label: t('Move') },
+          { value: 'set', label: t('Set balance') },
         ]}
         value={mode}
         onChange={(m) => {
@@ -206,7 +215,7 @@ export default function MoneySheet() {
       {mode === 'add' ? (
         <View style={{ gap: 8 }}>
           <Text variant="footnote" color="secondary" weight="600">
-            To
+            {t('To')}
           </Text>
           <AccountPicker value={to} onChange={(t) => (setTo(t), setNote(null))} accounts={accounts} />
         </View>
@@ -218,7 +227,7 @@ export default function MoneySheet() {
             {SHORTCUTS.map((s) => (
               <Chip
                 key={s.label}
-                label={s.label}
+                label={t(s.label)}
                 icon={s.icon}
                 selected={from === s.from && moveTo === s.to}
                 onPress={() => {
@@ -230,13 +239,13 @@ export default function MoneySheet() {
           </View>
           <View style={{ gap: 8 }}>
             <Text variant="footnote" color="secondary" weight="600">
-              From
+              {t('From')}
             </Text>
             <AccountPicker value={from} onChange={pickFrom} accounts={accounts} />
           </View>
           <View style={{ gap: 8 }}>
             <Text variant="footnote" color="secondary" weight="600">
-              To
+              {t('To')}
             </Text>
             <AccountPicker value={moveTo} onChange={setMoveTo} accounts={accounts} exclude={from} />
           </View>
@@ -246,7 +255,7 @@ export default function MoneySheet() {
       {mode === 'set' ? (
         <View style={{ gap: 8 }}>
           <Text variant="footnote" color="secondary" weight="600">
-            Account
+            {t('Account')}
           </Text>
           <AccountPicker
             value={target}
@@ -261,11 +270,11 @@ export default function MoneySheet() {
 
       <View style={{ gap: 8 }}>
         <Text variant="footnote" color="secondary" weight="600" style={{ textAlign: 'center' }}>
-          {mode === 'set' ? `What’s in ${nameOf(target)} right now` : 'Amount'}
+          {mode === 'set' ? t('What’s in {account} right now', { account: nameOf(target) }) : t('Amount')}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 8, paddingVertical: 6 }}>
           <TextInput
-            accessibilityLabel="Amount"
+            accessibilityLabel={t("Amount")}
             value={text}
             onChangeText={(t) => {
               setText(t);
@@ -288,18 +297,19 @@ export default function MoneySheet() {
         {mode === 'move' ? (
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
             <Text variant="footnote" color={tooMuch ? 'danger' : 'secondary'} style={{ flex: 1 }}>
-              {tooMuch ? 'More than you have in ' : 'Available in '}
-              {nameOf(from)}: {formatMoney(balanceOf(from), cur)}
+              {tooMuch
+                ? t('More than you have in {account}: {amount}', { account: nameOf(from), amount: formatMoney(balanceOf(from), cur) })
+                : t('Available in {account}: {amount}', { account: nameOf(from), amount: formatMoney(balanceOf(from), cur) })}
             </Text>
             {balanceOf(from) > 0 ? (
-              <Button title="All" size="small" variant="tinted" onPress={() => setText(amountInputValue(balanceOf(from), cur))} />
+              <Button title={t("All")} size="small" variant="tinted" onPress={() => setText(amountInputValue(balanceOf(from), cur))} />
             ) : null}
           </View>
         ) : null}
         {mode === 'add' && ADD_NOTES[to].length ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 4 }}>
             {ADD_NOTES[to].map((n) => (
-              <Chip key={n} label={n} selected={note === n} onPress={() => setNote(note === n ? null : n)} />
+              <Chip key={n} label={t(n)} selected={note === n} onPress={() => setNote(note === n ? null : n)} />
             ))}
           </View>
         ) : null}

@@ -13,6 +13,7 @@ import { useCurrency } from '@/lib/currency';
 import { categoryLabel, formatAmount, formatMoney } from '@/lib/format';
 import { useAccounts, useCreateTransaction, useFamily, useVoiceTransaction } from '@/lib/queries';
 import { radius, useTheme } from '@/theme';
+import { useT } from '@/i18n';
 
 const EXAMPLES: { label: string; icon: IconName }[] = [
   { label: 'taxi 20k', icon: 'transport' },
@@ -51,6 +52,7 @@ const mmss = (ms: number) => {
 };
 
 export default function Add() {
+  const { t } = useT();
   const cur = useCurrency();
   const { c } = useTheme();
   const accounts = useAccounts();
@@ -135,7 +137,7 @@ export default function Add() {
     setPending(null);
     const perm = await AudioModule.requestRecordingPermissionsAsync();
     if (!perm.granted) {
-      setError('Microphone access is off. Allow it in your phone’s Settings, or type the expense.');
+      setError(t('Microphone access is off. Allow it in your phone’s Settings, or type the expense.'));
       return;
     }
     try {
@@ -143,7 +145,7 @@ export default function Add() {
       await recorder.prepareToRecordAsync();
       recorder.record();
     } catch (e) {
-      setError(`Couldn’t start the microphone (${e instanceof Error ? e.message : String(e)}). Type the expense instead.`);
+      setError(t('Couldn’t start the microphone ({error}). Type the expense instead.', { error: e instanceof Error ? e.message : String(e) }));
       return;
     }
     haptic('medium');
@@ -159,12 +161,12 @@ export default function Add() {
       await recorder.stop();
       await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
     } catch (e) {
-      setError(`Couldn’t stop the recording (${e instanceof Error ? e.message : String(e)}). Try again.`);
+      setError(t('Couldn’t stop the recording ({error}). Try again.', { error: e instanceof Error ? e.message : String(e) }));
       return;
     }
     const uri = recorder.uri;
     if (!uri) {
-      setError('The recording was empty. Try again.');
+      setError(t('The recording was empty. Try again.'));
       return;
     }
     try {
@@ -180,7 +182,7 @@ export default function Add() {
   };
 
   return (
-    <Screen tabs title="Add expense" subtitle="Type it like a message, or just say it.">
+    <Screen tabs title={t("Add expense")} subtitle={t("Type it like a message, or just say it.")}>
       <View
         style={{
           backgroundColor: c.card,
@@ -194,10 +196,10 @@ export default function Add() {
       >
         <Icon name="pen" size={20} color={c.secondary} />
         <TextInput
-          accessibilityLabel="Describe the expense"
+          accessibilityLabel={t("Describe the expense")}
           value={text}
           onChangeText={edit}
-          placeholder="e.g. taxi 20k"
+          placeholder={t("e.g. taxi 20k")}
           placeholderTextColor={c.secondary}
           autoCapitalize="none"
           autoCorrect={false}
@@ -209,7 +211,7 @@ export default function Add() {
         {text ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Clear"
+            accessibilityLabel={t("Clear")}
             onPress={() => edit('')}
             style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
           >
@@ -252,14 +254,14 @@ export default function Add() {
           <IconTile name="family" bg={payFamily ? c.strong : c.fill} fg={payFamily ? c.onStrong : c.label} size={36} iconSize={19} rounded={18} />
           <View style={{ flex: 1, gap: 1 }}>
             <Text variant="callout" weight="600">
-              From family budget
+              {t('From family budget')}
             </Text>
             <Text variant="footnote" color="secondary" tabular numberOfLines={1}>
-              {formatMoney(family.data.budget.remaining, family.data.family.currency)} left in {family.data.family.name}
+              {t('{amount} left in {family}', { amount: formatMoney(family.data.budget.remaining, family.data.family.currency), family: family.data.family.name })}
             </Text>
           </View>
           <Switch
-            accessibilityLabel="Pay from the family budget"
+            accessibilityLabel={t("Pay from the family budget")}
             value={payFamily}
             onValueChange={(v) => {
               haptic('light');
@@ -276,7 +278,7 @@ export default function Add() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Icon name="bot" size={15} color={c.ai} strokeWidth={2} />
               <Text variant="sectionLabel" color="aiInk">
-                FeMate understood
+                {t('FeMate understood')}
               </Text>
             </View>
             <View
@@ -292,7 +294,7 @@ export default function Add() {
             >
               <Icon name="pen" size={12} color={c.secondary} strokeWidth={2.2} />
               <Text variant="caption" color="secondary" weight="600">
-                Typed
+                {t('Typed')}
               </Text>
             </View>
           </View>
@@ -338,14 +340,15 @@ export default function Add() {
             <IconTile name="cash" bg={c.fill} fg={c.label} size={34} iconSize={18} />
             <View style={{ flex: 1 }}>
               <Text variant="footnote" color="secondary">
-                Paid from
+                {t('Paid from')}
               </Text>
               <Text variant="callout" weight="600" tabular numberOfLines={1}>
-                Cash · {formatAmount(cash?.balance ?? 0, cur)} left{payFamily ? ' · family budget' : ''}
+                {t('Cash · {amount} left', { amount: formatAmount(cash?.balance ?? 0, cur) })}
+                {payFamily ? ` · ${t('family budget')}` : ''}
               </Text>
             </View>
           </View>
-          <Button title={payFamily ? 'Save as family spend' : 'Save expense'} icon="check" onPress={save} loading={create.isPending} />
+          <Button title={payFamily ? t('Save as family spend') : t('Save expense')} icon="check" onPress={save} loading={create.isPending} />
         </Card>
       ) : null}
 
@@ -353,7 +356,7 @@ export default function Add() {
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <IconTile name="wave" bg={c.aiTint} fg={c.ai} size={40} iconSize={22} />
           <Text variant="callout" color="secondary" style={{ flex: 1 }}>
-            Listening back to your note…
+            {t('Listening back to your note…')}
           </Text>
         </Card>
       ) : null}
@@ -371,8 +374,8 @@ export default function Add() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                 <Icon name="check" size={13} color={c.positive} strokeWidth={2.6} />
                 <Text variant="footnote" color="positive" weight="600">
-                  Added to today{saved.tx.familyId ? ' · family budget' : ''}
-                  {saved.transcript ? ' from your voice note' : ''}
+                  {saved.transcript ? t('Added to today from your voice note') : t('Added to today')}
+                  {saved.tx.familyId ? ` · ${t('family budget')}` : ''}
                 </Text>
               </View>
             </View>
@@ -385,7 +388,7 @@ export default function Add() {
               </Text>
             </View>
           ) : null}
-          <Button title="Add another" icon="plus" variant="secondary" size="medium" onPress={() => edit('')} />
+          <Button title={t("Add another")} icon="plus" variant="secondary" size="medium" onPress={() => edit('')} />
         </Card>
       ) : null}
 
@@ -398,7 +401,7 @@ export default function Add() {
                 {formatMoney(pending.request.amount, family.data?.family.currency ?? cur)} · {pending.request.description}
               </Text>
               <Text variant="footnote" color="secondary">
-                Over the family approval limit, so it’s sent to {family.data?.family.managerName ?? 'the manager'}. It’s recorded once approved.
+                {t('Over the family approval limit, so it’s sent to {name}. It’s recorded once approved.', { name: family.data?.family.managerName ?? t('the manager') })}
               </Text>
             </View>
           </View>
@@ -407,7 +410,7 @@ export default function Add() {
               “{pending.transcript}”
             </Text>
           ) : null}
-          <Button title="Add another" icon="plus" variant="secondary" size="medium" onPress={() => edit('')} />
+          <Button title={t("Add another")} icon="plus" variant="secondary" size="medium" onPress={() => edit('')} />
         </Card>
       ) : null}
 
@@ -431,7 +434,7 @@ export default function Add() {
             disabled={busy}
             hapticOnPress={false}
             accessibilityRole="button"
-            accessibilityLabel={recording ? 'Stop recording' : 'Record a voice note'}
+            accessibilityLabel={recording ? t('Stop recording') : t('Record a voice note')}
             style={{
               width: 84,
               height: 84,
@@ -458,8 +461,8 @@ export default function Add() {
           <Icon name={recording ? 'wave' : 'mic'} size={14} color={c.secondary} strokeWidth={2.2} />
           <Text variant="footnote" color="secondary" weight="500" tabular style={{ fontSize: 14 }}>
             {recording
-              ? `Listening ${mmss(recState.durationMillis)} / 1:00 · tap to stop`
-              : 'Tap and say “Groceries 45 thousand at the bazaar”'}
+              ? t('Listening {time} / 1:00 · tap to stop', { time: mmss(recState.durationMillis) })
+              : t('Tap and say “Groceries 45 thousand at the bazaar”')}
           </Text>
         </View>
       </View>

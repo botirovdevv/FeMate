@@ -13,21 +13,23 @@ import { useCurrency } from '@/lib/currency';
 import { formatAmount } from '@/lib/format';
 import { queryClient, usePermissions } from '@/lib/queries';
 import { space, useTheme } from '@/theme';
+import { msg, useT } from '@/i18n';
 
 const SCOPES: { key: Scope; title: string; desc: string; icon: IconName }[] = [
-  { key: 'read_balance', title: 'Read balances', desc: 'Card, savings and cash totals', icon: 'eye' },
-  { key: 'read_transactions', title: 'Read transactions', desc: 'Amounts, merchants and dates for the last 90 days', icon: 'list' },
-  { key: 'transfer_own', title: 'Move money between my accounts', desc: 'Card → Savings only. Never to other people.', icon: 'transfer' },
+  { key: 'read_balance', title: msg('Read balances'), desc: msg('Card, savings and cash totals'), icon: 'eye' },
+  { key: 'read_transactions', title: msg('Read transactions'), desc: msg('Amounts, merchants and dates for the last 90 days'), icon: 'list' },
+  { key: 'transfer_own', title: msg('Move money between my accounts'), desc: msg('Card → Savings only. Never to other people.'), icon: 'transfer' },
 ];
 
 const LEVELS: { id: PermissionLevel; name: string; desc: string; icon: IconName; recommended?: boolean }[] = [
-  { id: 'L0', name: 'Read-only', desc: 'Sees your spending. Never suggests or acts.', icon: 'eye' },
-  { id: 'L1', name: 'Advisor', desc: 'Reads and gives recommendations. You do everything yourself.', icon: 'bulb' },
-  { id: 'L2', name: 'Co-pilot', desc: 'Proposes transfers. Nothing moves until you tap Approve.', icon: 'shieldCheck', recommended: true },
-  { id: 'L3', name: 'Autopilot', desc: 'Moves money inside strict limits, then tells you.', icon: 'rocket' },
+  { id: 'L0', name: msg('Read-only'), desc: msg('Sees your spending. Never suggests or acts.'), icon: 'eye' },
+  { id: 'L1', name: msg('Advisor'), desc: msg('Reads and gives recommendations. You do everything yourself.'), icon: 'bulb' },
+  { id: 'L2', name: msg('Co-pilot'), desc: msg('Proposes transfers. Nothing moves until you tap Approve.'), icon: 'shieldCheck', recommended: true },
+  { id: 'L3', name: msg('Autopilot'), desc: msg('Moves money inside strict limits, then tells you.'), icon: 'rocket' },
 ];
 
 export default function ConnectBank() {
+  const { t } = useT();
   const cur = useCurrency();
   const { c, dark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -76,13 +78,13 @@ export default function ConnectBank() {
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t("Back")}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
           style={{ flexDirection: 'row', alignItems: 'center', height: 44, alignSelf: 'flex-start' }}
         >
           <Icon name="chevronLeft" size={22} color={c.accent} strokeWidth={2.4} />
           <Text variant="body" color="accent" style={{ fontSize: 17 }}>
-            Back
+            {t('Back')}
           </Text>
         </Pressable>
 
@@ -97,17 +99,17 @@ export default function ConnectBank() {
             <IconTile name="bank" bg={c.accent} fg={c.onAccent} size={56} iconSize={26} />
           </View>
           <Text variant="title" style={{ textAlign: 'center' }} accessibilityRole="header">
-            {editing ? 'Agent permissions' : 'Connect Sandbox Bank'}
+            {editing ? t('Agent permissions') : t('Connect Sandbox Bank')}
           </Text>
           <Text variant="callout" color="secondary" style={{ textAlign: 'center' }}>
             {editing
-              ? 'Limits can only go down from the system maximum. Changes apply to the next action.'
-              : 'Choose exactly what FeMate may see and do. You can change this or stop the agent at any time.'}
+              ? t('Limits can only go down from the system maximum. Changes apply to the next action.')
+              : t('Choose exactly what FeMate may see and do. You can change this or stop the agent at any time.')}
           </Text>
         </View>
 
         <View>
-          <SectionLabel>Data access</SectionLabel>
+          <SectionLabel>{t('Data access')}</SectionLabel>
           <View style={{ backgroundColor: c.card, borderRadius: 18, overflow: 'hidden' }}>
             {SCOPES.map((s, i) => {
               const on = scopes.includes(s.key);
@@ -134,10 +136,10 @@ export default function ConnectBank() {
                   <IconTile name={s.icon} bg={on ? c.accentTint : c.fill} fg={on ? c.accent : c.secondary} size={36} iconSize={20} />
                   <View style={{ flex: 1, gap: 2 }}>
                     <Text variant="body" weight="600">
-                      {s.title}
+                      {t(s.title)}
                     </Text>
                     <Text variant="footnote" color="secondary">
-                      {s.desc}
+                      {t(s.desc)}
                     </Text>
                   </View>
                   <View
@@ -161,7 +163,7 @@ export default function ConnectBank() {
         </View>
 
         <View accessibilityRole="radiogroup">
-          <SectionLabel>Agent permission level</SectionLabel>
+          <SectionLabel>{t('Agent permission level')}</SectionLabel>
           <View style={{ gap: 8 }}>
             {LEVELS.map((l) => {
               const on = l.id === level;
@@ -193,18 +195,18 @@ export default function ConnectBank() {
                         </Text>
                       </View>
                       <Text variant="body" weight="600">
-                        {l.name}
+                        {t(l.name)}
                       </Text>
                       {l.recommended ? (
                         <View style={{ backgroundColor: c.aiTint, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
                           <Text variant="caption" color="aiInk" weight="700" style={{ fontSize: 11, letterSpacing: 0.3 }}>
-                            RECOMMENDED
+                            {t('RECOMMENDED')}
                           </Text>
                         </View>
                       ) : null}
                     </View>
                     <Text variant="footnote" color="secondary">
-                      {l.desc}
+                      {t(l.desc)}
                     </Text>
                     {lim ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingTop: 2 }}>
@@ -224,7 +226,7 @@ export default function ConnectBank() {
         <View style={{ flexDirection: 'row', gap: 12, paddingHorizontal: 8 }}>
           <Icon name="shieldCheck" size={20} color={c.accent} />
           <Text variant="footnote" color="secondary" style={{ flex: 1 }}>
-            Money can only move between your own card and savings account. Every action, allowed or blocked, goes into the audit log.
+            {t('Money can only move between your own card and savings account. Every action, allowed or blocked, goes into the audit log.')}
           </Text>
         </View>
         {error ? (
@@ -251,7 +253,7 @@ export default function ConnectBank() {
         }}
       >
         <Button
-          title={editing ? `Save · ${level} ${name}` : `Allow access · ${level} ${name}`}
+          title={editing ? t('Save · {level} {name}', { level, name: name ? t(name) : '' }) : t('Allow access · {level} {name}', { level, name: name ? t(name) : '' })}
           icon="shieldCheck"
           onPress={allow}
           loading={busy}

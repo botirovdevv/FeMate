@@ -18,6 +18,7 @@ import {
 
 import { fontFamily, radius, space, type, useTheme, type Palette } from '@/theme';
 import { Icon, type IconName } from './Icon';
+import { useT } from '@/i18n';
 
 export function haptic(kind: 'light' | 'medium' | 'success' | 'warning' = 'light') {
   if (Platform.OS === 'web') return;
@@ -44,7 +45,7 @@ export function Text({
 }
 
 /**
- * The Plus Jakarta Sans file for a weight. fontWeight is reset, since a custom family plus a weight makes iOS
+ * The Manrope file for a weight. fontWeight is reset, since a custom family plus a weight makes iOS
  * look for a variant that doesn't exist and Android fake-bold the glyphs.
  */
 export function font(weight?: TextStyle['fontWeight']): TextStyle {
@@ -53,6 +54,7 @@ export function font(weight?: TextStyle['fontWeight']): TextStyle {
 
 /** Two pulsing dots, the loading state of pill buttons. */
 export function LoadingDots({ color }: { color: string }) {
+  const { t } = useT();
   const v = useState(() => new Animated.Value(0))[0];
   useEffect(() => {
     const loop = Animated.loop(Animated.timing(v, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }));
@@ -60,7 +62,7 @@ export function LoadingDots({ color }: { color: string }) {
     return () => loop.stop();
   }, [v]);
   return (
-    <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }} accessibilityLabel="Loading">
+    <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }} accessibilityLabel={t('Loading')}>
       {[0, 1].map((i) => (
         <Animated.View
           key={i}
@@ -364,8 +366,9 @@ export function Segmented<T extends string>({
 }
 
 // Inline load failure with a retry, so a failed request never leaves a spinner turning forever.
-export function ErrorRow({ message = 'Couldn’t load this.', onRetry }: { message?: string; onRetry: () => void }) {
+export function ErrorRow({ message, onRetry }: { message?: string; onRetry: () => void }) {
   const { c } = useTheme();
+  const { t } = useT();
   return (
     <View
       accessibilityLiveRegion="polite"
@@ -373,9 +376,9 @@ export function ErrorRow({ message = 'Couldn’t load this.', onRetry }: { messa
     >
       <Icon name="info" size={18} color={c.dangerInk} strokeWidth={2.2} />
       <Text variant="footnote" color={c.dangerInk} style={{ flex: 1 }}>
-        {message}
+        {message ?? t('Couldn’t load this.')}
       </Text>
-      <Button title="Try again" icon="refresh" size="small" variant="secondary" onPress={onRetry} style={{ backgroundColor: c.card }} />
+      <Button title={t("Try again")} icon="refresh" size="small" variant="secondary" onPress={onRetry} style={{ backgroundColor: c.card }} />
     </View>
   );
 }

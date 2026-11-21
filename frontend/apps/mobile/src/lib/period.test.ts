@@ -10,7 +10,7 @@ describe('periods', () => {
     expect([dayKey(w.from), dayKey(w.to)]).toEqual(['2026-10-12', '2026-10-18']);
     const w2 = periodRange('week', 2, now);
     expect([dayKey(w2.from), dayKey(w2.to)]).toEqual(['2026-09-28', '2026-10-04']);
-    expect(rangeLabel('week', w2)).toBe('28 Sept – 4 Oct');
+    expect(rangeLabel('week', w2)).toBe('28 Sep – 4 Oct');
     expect(rangeLabel('week', w)).toBe('12–18 Oct');
   });
 

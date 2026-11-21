@@ -12,26 +12,27 @@ import { errorMessage } from '@/lib/api';
 import { formatMoney, formatWhole, parseWhole } from '@/lib/format';
 import { useMe, useUpdateMe } from '@/lib/queries';
 import { space, useTheme } from '@/theme';
+import { msg, useT } from '@/i18n';
 
 const STEPS: { title: string; hint: string; label: string; chips: number[]; icon: IconName }[] = [
   {
-    title: 'What is your monthly income?',
-    hint: 'Salary and any regular income after tax. FeMate uses it to set a daily limit.',
-    label: 'Monthly income',
+    title: msg('What is your monthly income?'),
+    hint: msg('Salary and any regular income after tax. FeMate uses it to set a daily limit.'),
+    label: msg('Monthly income'),
     chips: [3_000_000, 4_000_000, 6_000_000],
     icon: 'wallet',
   },
   {
-    title: 'Fixed monthly costs?',
-    hint: 'Rent, internet, phone and loans: things you pay every month no matter what.',
-    label: 'Fixed costs per month',
+    title: msg('Fixed monthly costs?'),
+    hint: msg('Rent, internet, phone and loans: things you pay every month no matter what.'),
+    label: msg('Fixed costs per month'),
     chips: [300_000, 600_000, 1_000_000],
     icon: 'home',
   },
   {
-    title: 'How much do you want to save?',
-    hint: 'The agent works toward this goal and suggests moving leftovers to Savings.',
-    label: 'Savings goal per month',
+    title: msg('How much do you want to save?'),
+    hint: msg('The agent works toward this goal and suggests moving leftovers to Savings.'),
+    label: msg('Savings goal per month'),
     chips: [300_000, 500_000, 800_000],
     icon: 'target',
   },
@@ -50,6 +51,7 @@ function daysInMonth() {
 }
 
 export default function Onboarding() {
+  const { t } = useT();
   const saved = useCurrency();
   const [cur, setCur] = useState<Currency>('UZS');
   const { c, dark } = useTheme();
@@ -136,7 +138,7 @@ export default function Onboarding() {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={step === 0 ? 'Back' : 'Previous step'}
+          accessibilityLabel={step === 0 ? t('Back') : t('Previous step')}
           onPress={back}
           disabled={step === 0 && !canLeave}
           style={{
@@ -151,7 +153,7 @@ export default function Onboarding() {
         >
           <Icon name="chevronLeft" size={20} color={c.label} strokeWidth={2.2} />
         </Pressable>
-        <View style={{ flex: 1, flexDirection: 'row', gap: 6 }} accessibilityLabel={`Step ${step + 1} of 3`}>
+        <View style={{ flex: 1, flexDirection: 'row', gap: 6 }} accessibilityLabel={t('Step {n} of 3', { n: step + 1 })}>
           {STEPS.map((_, i) => (
             <View key={i} style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: i <= step ? c.accent : c.fill2 }} />
           ))}
@@ -164,17 +166,17 @@ export default function Onboarding() {
       <View style={{ gap: 14 }}>
         <IconTile name={q.icon} bg={c.accent} fg={c.onAccent} size={64} iconSize={30} />
         <Text variant="title" style={{ fontSize: 30, lineHeight: 35 }} accessibilityRole="header">
-          {q.title}
+          {t(q.title)}
         </Text>
         <Text variant="body" color="secondary" style={{ fontSize: 17, lineHeight: 24 }}>
-          {q.hint}
+          {t(q.hint)}
         </Text>
       </View>
 
       {step === 0 && !editing ? (
         <View style={{ gap: 8 }}>
           <Text variant="footnote" color="secondary" weight="600">
-            Currency
+            {t('Currency')}
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {CURRENCIES.map((x) => (
@@ -186,7 +188,7 @@ export default function Onboarding() {
 
       <View style={{ gap: 8 }}>
         <Text variant="footnote" color="secondary" weight="600">
-          {q.label}
+          {t(q.label)}
         </Text>
         <View
           style={{
@@ -199,7 +201,7 @@ export default function Onboarding() {
           }}
         >
           <KeyboardInput
-            accessibilityLabel={q.label}
+            accessibilityLabel={t(q.label)}
             value={formatWhole(value, cur)}
             onChangeText={(t) => set(parseWhole(t, cur))}
             keyboardType="number-pad"
@@ -234,13 +236,13 @@ export default function Onboarding() {
         <IconTile name="receipt" bg="#FFFFFF" fg="#000000" size={44} iconSize={22} />
         <View style={{ gap: 2, flex: 1 }}>
           <Text variant="footnote" color="rgba(255,255,255,0.6)" weight="600">
-            Your daily allowance
+            {t('Your daily allowance')}
           </Text>
           <Text variant="title" color="#FFFFFF" tabular numberOfLines={1} adjustsFontSizeToFit>
             {formatMoney(allowance, cur)}
           </Text>
           <Text variant="caption" color="rgba(255,255,255,0.6)">
-            {overBudget && step > 0 ? 'Fixed costs and the goal use up all of your income.' : `(income − fixed − goal) ÷ ${days} days`}
+            {overBudget && step > 0 ? t('Fixed costs and the goal use up all of your income.') : t('(income − fixed − goal) ÷ {n} days', { n: days })}
           </Text>
         </View>
       </View>
@@ -252,7 +254,7 @@ export default function Onboarding() {
       ) : null}
 
       <Button
-        title={last ? (editing ? 'Save budget' : 'Connect your bank') : 'Continue'}
+        title={last ? (editing ? t('Save budget') : t('Connect your bank')) : t('Continue')}
         iconRight={last && editing ? undefined : 'arrowRight'}
         icon={last && editing ? 'check' : undefined}
         onPress={next}

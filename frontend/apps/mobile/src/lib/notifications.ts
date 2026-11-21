@@ -2,6 +2,7 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 
 import { api } from './api';
+import { t } from '@/i18n';
 
 type NotificationsModule = typeof import('expo-notifications');
 
@@ -58,20 +59,20 @@ async function registerPushToken(N: NotificationsModule): Promise<boolean> {
 // Asks for permission and registers for server push (the real daily report and agent alerts). Where the
 // build can't get a push token, a local reminder at the report time stands in, so there is never a double.
 export async function enableNotifications(reportTime: string): Promise<EnableResult> {
-  if (Platform.OS === 'web') return { ok: false, reason: 'Notifications work in the phone app, not in the browser.' };
+  if (Platform.OS === 'web') return { ok: false, reason: t('Notifications work in the phone app, not in the browser.') };
   const N = load();
   if (!N) {
     return {
       ok: false,
       reason: inExpoGoAndroid
-        ? 'Expo Go on Android can’t show FeMate notifications. They work in the installed app (APK).'
-        : 'Notifications aren’t available on this device.',
+        ? t('Expo Go on Android can’t show FeMate notifications. They work in the installed app (APK).')
+        : t('Notifications aren’t available on this device.'),
     };
   }
   const perm = await N.requestPermissionsAsync({ ios: { allowAlert: true, allowBadge: true, allowSound: true } });
-  if (!perm.granted) return { ok: false, reason: 'Notifications are off for FeMate. Turn them on in your phone’s Settings.' };
+  if (!perm.granted) return { ok: false, reason: t('Notifications are off for FeMate. Turn them on in your phone’s Settings.') };
   if (Platform.OS === 'android') {
-    await N.setNotificationChannelAsync(CHANNEL, { name: 'Daily report', importance: N.AndroidImportance.DEFAULT });
+    await N.setNotificationChannelAsync(CHANNEL, { name: t('Daily report'), importance: N.AndroidImportance.DEFAULT });
   }
   const pushToken = await registerPushToken(N);
   await scheduleDailyReport(reportTime, pushToken);
@@ -86,7 +87,7 @@ export async function scheduleDailyReport(reportTime: string, serverPush: boolea
   if (serverPush) return;
   const { hour, minute } = parseTime(reportTime);
   await N.scheduleNotificationAsync({
-    content: { title: 'Your day with FeMate', body: 'See what you spent today and how much you can move to Savings.' },
+    content: { title: t('Your day with FeMate'), body: t('See what you spent today and how much you can move to Savings.') },
     trigger: { type: N.SchedulableTriggerInputTypes.DAILY, hour, minute, channelId: CHANNEL },
   });
 }

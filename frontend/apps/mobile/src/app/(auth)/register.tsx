@@ -11,8 +11,10 @@ import { api, errorMessage } from '@/lib/api';
 import { isAcceptablePassword, passwordStrength, type PasswordLevel } from '@/lib/password';
 import { useSession } from '@/store/session';
 import { useTheme } from '@/theme';
+import { useT } from '@/i18n';
 
 export default function Register() {
+  const { t } = useT();
   const { c } = useTheme();
   const typing = useKeyboardHeight() > 0;
   const insets = useSafeAreaInsets();
@@ -33,17 +35,17 @@ export default function Register() {
     setError(null);
     if (!name.trim()) {
       haptic('warning');
-      setError('Enter your name.');
+      setError(t('Enter your name.'));
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       haptic('warning');
-      setError('Enter a valid email, like you@example.com.');
+      setError(t('Enter a valid email, like you@example.com.'));
       return;
     }
     if (!passwordOk) {
       haptic('warning');
-      setError(`Choose a stronger password. ${strength.hint || `Use at least 8 characters.`}`);
+      setError(`${t('Choose a stronger password.')} ${strength.hint || t('Use at least 8 characters.')}`);
       return;
     }
     setBusy(true);
@@ -62,26 +64,26 @@ export default function Register() {
 
   return (
     <KeyboardScreen style={{ backgroundColor: c.bg }} bounces={false}>
-      <AuthHero compact={typing} subtitle="Two minutes to set up. You stay in control of every transfer." />
+      <AuthHero compact={typing} subtitle={t("Two minutes to set up. You stay in control of every transfer.")} />
       <View style={{ flex: 1, paddingHorizontal: 28, paddingTop: typing ? 20 : 12, paddingBottom: insets.bottom + 20, gap: 18 }}>
         <Text variant="title" accessibilityRole="header">
-          Create account
+          {t('Create account')}
         </Text>
         <AuthField
-          label="Name"
+          label={t("Name")}
           value={name}
           onChangeText={setName}
-          placeholder="Your name"
+          placeholder={t("Your name")}
           autoComplete="name"
           returnKeyType="next"
           onSubmitEditing={() => emailRef.current?.focus()}
         />
         <AuthField
           ref={emailRef}
-          label="Email"
+          label={t("Email")}
           value={email}
           onChangeText={setEmail}
-          placeholder="Enter your email"
+          placeholder={t("Enter your email")}
           autoCapitalize="none"
           keyboardType="email-address"
           autoComplete="email"
@@ -90,11 +92,11 @@ export default function Register() {
         />
         <AuthField
           ref={passRef}
-          label="Password"
+          label={t("Password")}
           secure
           value={password}
           onChangeText={setPassword}
-          placeholder="8+ characters"
+          placeholder={t("8+ characters")}
           autoComplete="new-password"
           returnKeyType="go"
           onSubmitEditing={submit}
@@ -105,15 +107,15 @@ export default function Register() {
             {error}
           </Text>
         ) : null}
-        <Button title="Continue" onPress={submit} loading={busy} disabled={!passwordOk} />
+        <Button title={t("Continue")} onPress={submit} loading={busy} disabled={!passwordOk} />
         <View style={{ flex: 1, minHeight: 12 }} />
         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
           <Text variant="callout" color="secondary">
-            Already have an account?
+            {t('Already have an account?')}
           </Text>
           <Pressable accessibilityRole="link" onPress={() => router.back()} style={{ minHeight: 44, justifyContent: 'center' }}>
             <Text variant="callout" weight="700">
-              Sign in
+              {t('Sign in')}
             </Text>
           </Pressable>
         </View>
@@ -122,14 +124,17 @@ export default function Register() {
   );
 }
 
+// t('Weak') t('Medium') t('Strong')
 const LEVELS = { weak: { bars: 1, label: 'Weak' }, medium: { bars: 2, label: 'Medium' }, strong: { bars: 3, label: 'Strong' } } as const;
 
 function StrengthMeter({ level, hint }: { level: Exclude<PasswordLevel, 'empty'>; hint: string }) {
   const { c } = useTheme();
   const color = { weak: c.danger, medium: c.warn, strong: c.positive }[level];
-  const { bars, label } = LEVELS[level];
+  const { t } = useT();
+  const { bars } = LEVELS[level];
+  const label = t(LEVELS[level].label);
   return (
-    <View style={{ gap: 6 }} accessibilityLabel={`Password strength: ${label}. ${hint}`} accessibilityLiveRegion="polite">
+    <View style={{ gap: 6 }} accessibilityLabel={t('Password strength: {label}. {hint}', { label, hint })} accessibilityLiveRegion="polite">
       <View style={{ flexDirection: 'row', gap: 6 }}>
         {[0, 1, 2].map((i) => (
           <View key={i} style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: i < bars ? color : c.fill }} />

@@ -12,15 +12,17 @@ import { useCurrency } from '@/lib/currency';
 import { formatMoney, formatWhole, parseWhole } from '@/lib/format';
 import { useAccounts, useSetBalance } from '@/lib/queries';
 import { space, useTheme } from '@/theme';
+import { msg, useT } from '@/i18n';
 
 const ROWS: { type: Account['type']; label: string; hint: string; icon: IconName }[] = [
-  { type: 'card', label: 'On your card', hint: 'What your bank app shows for the card you spend from.', icon: 'card' },
-  { type: 'cash', label: 'Cash in your wallet', hint: 'Count it roughly. You can correct it any time.', icon: 'cash' },
-  { type: 'savings', label: 'Already saved', hint: 'Money you keep aside and don’t spend.', icon: 'savings' },
+  { type: 'card', label: msg('On your card'), hint: msg('What your bank app shows for the card you spend from.'), icon: 'card' },
+  { type: 'cash', label: msg('Cash in your wallet'), hint: msg('Count it roughly. You can correct it any time.'), icon: 'cash' },
+  { type: 'savings', label: msg('Already saved'), hint: msg('Money you keep aside and don’t spend.'), icon: 'savings' },
 ];
 
 // After connecting the bank: the user's real starting money, so FeMate starts from the truth instead of zero.
 export default function StartingBalances() {
+  const { t } = useT();
   const cur = useCurrency();
   const { c, dark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -71,7 +73,7 @@ export default function StartingBalances() {
       <View style={{ gap: 14 }}>
         <IconTile name="wallet" bg={c.accent} fg={c.onAccent} size={64} iconSize={30} />
         <Text variant="title" style={{ fontSize: 30, lineHeight: 35 }} accessibilityRole="header">
-          How much do you have right now?
+          {t('How much do you have right now?')}
         </Text>
         <Text variant="body" color="secondary" style={{ fontSize: 17, lineHeight: 24 }}>
           FeMate starts from your real money. Nothing is charged; these are just your starting numbers.
@@ -83,7 +85,7 @@ export default function StartingBalances() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <IconTile name={r.icon} bg={c.fill} fg={c.label} size={30} iconSize={17} rounded={9} />
             <Text variant="callout" weight="600">
-              {r.label}
+              {t(r.label)}
             </Text>
           </View>
           <View
@@ -97,7 +99,7 @@ export default function StartingBalances() {
             }}
           >
             <KeyboardInput
-              accessibilityLabel={r.label}
+              accessibilityLabel={t(r.label)}
               value={values[r.type] ? formatWhole(values[r.type], cur) : ''}
               placeholder="0"
               placeholderTextColor={c.secondary}
@@ -118,7 +120,7 @@ export default function StartingBalances() {
             </Text>
           </View>
           <Text variant="footnote" color="secondary">
-            {r.hint}
+            {t(r.hint)}
           </Text>
         </View>
       ))}
@@ -133,12 +135,12 @@ export default function StartingBalances() {
 
       <View style={{ gap: space.sm }}>
         <Button
-          title={total > 0 ? `Start with ${formatMoney(total, cur)}` : 'Continue'}
+          title={total > 0 ? t('Start with {amount}', { amount: formatMoney(total, cur) }) : t('Continue')}
           iconRight="arrowRight"
           onPress={save}
           loading={busy}
         />
-        <Button title="Skip for now" variant="plain" onPress={() => router.replace('/(tabs)')} disabled={busy} />
+        <Button title={t("Skip for now")} variant="plain" onPress={() => router.replace('/(tabs)')} disabled={busy} />
       </View>
     </KeyboardScreen>
   );

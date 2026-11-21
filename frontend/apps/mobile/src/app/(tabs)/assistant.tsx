@@ -16,6 +16,7 @@ import { useCurrency } from '@/lib/currency';
 import { formatAmount, formatMoney } from '@/lib/format';
 import { useActions, useApplyRecommendation, useChat, useInsight, usePermissions, useRecommendations } from '@/lib/queries';
 import { space, useTheme } from '@/theme';
+import { t as tr, useT } from '@/i18n';
 
 interface Msg {
   id: string;
@@ -27,19 +28,22 @@ interface Msg {
 // The floating pill tab bar sits above the safe-area inset.
 const TAB_BAR = TAB_BAR_SPACE;
 // The big transfer is over every level's per-action limit, so it shows Policy Guard refusing it.
+// Sent as typed, in the app language; the server's agent understands all three.
 const suggestions = (bigTransfer: string): { label: string; icon: IconName }[] => [
-  { label: 'How am I doing this month?', icon: 'target' },
-  { label: 'How much is left today?', icon: 'gauge' },
-  { label: 'Move today’s savings', icon: 'savings' },
-  { label: `Move ${bigTransfer} to savings`, icon: 'transfer' },
-  { label: 'Where does my money go?', icon: 'chart' },
+  { label: tr('How am I doing this month?'), icon: 'target' },
+  { label: tr('How much is left today?'), icon: 'gauge' },
+  { label: tr('Move today’s savings'), icon: 'savings' },
+  { label: tr('Move {amount} to savings', { amount: bigTransfer }), icon: 'transfer' },
+  { label: tr('Where does my money go?'), icon: 'chart' },
 ];
+// t('Read-only') t('Advisor') t('Co-pilot') t('Autopilot')
 const levelName = { L0: 'Read-only', L1: 'Advisor', L2: 'Co-pilot', L3: 'Autopilot' } as const;
 const recIcon: Record<string, IconName> = { rec_bus: 'bus', rec_food: 'food' };
 
 export default function Assistant() {
   const cur = useCurrency();
   const { c, dark } = useTheme();
+  const { t } = useT();
   const insets = useSafeAreaInsets();
   const recs = useRecommendations();
   const insight = useInsight();
@@ -62,12 +66,16 @@ export default function Assistant() {
         {
           id: 'm0',
           who: 'agent',
-          text: `I’d like to move ${formatMoney(first.amount ?? 0, cur)} to Savings. You’re on ${level} ${levelName[level]}, so it waits for your approval.`,
+          text: t('I’d like to move {amount} to Savings. You’re on {level} {name}, so it waits for your approval.', {
+            amount: formatMoney(first.amount ?? 0, cur),
+            level,
+            name: t(levelName[level]),
+          }),
           action: first,
         },
       ]);
     }
-  }, [pending.data, msgs.length, cur, level]);
+  }, [pending.data, msgs.length, cur, level, t]);
   const pendingIds = new Set((pending.data ?? []).map((a) => a.id));
   const [applyError, setApplyError] = useState<string | null>(null);
 
@@ -120,17 +128,17 @@ export default function Assistant() {
       >
         {/* Full-bleed hero: cancels the list's padding. */}
         <View style={{ marginHorizontal: -space.lg, marginTop: -(insets.top + space.md), marginBottom: 6 }}>
-          <HeroHeader title="Assistant">
+          <HeroHeader title={t("Assistant")}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
               <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: c.ai, alignItems: 'center', justifyContent: 'center' }}>
                 <Icon name="bot" size={26} color={c.onAi} strokeWidth={2} />
               </View>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text variant="headline" color="#FFFFFF">
-                  Your money co-pilot
+                  {t('Your money co-pilot')}
                 </Text>
                 <Text variant="footnote" color="rgba(255,255,255,0.6)">
-                  Based on your last 14 days · {perms.data?.agentEnabled === false ? 'agent stopped' : (perms.data?.level ?? '…')}
+                  {t('Based on your last 14 days')} · {perms.data?.agentEnabled === false ? t('agent stopped') : (perms.data?.level ?? '…')}
                 </Text>
               </View>
             </View>
@@ -171,13 +179,13 @@ export default function Assistant() {
               >
                 <Icon name="check" size={16} color={c.positiveInk} strokeWidth={2.6} />
                 <Text variant="callout" color="positiveInk" weight="600">
-                  {r.actionType ? 'Sent for your approval' : 'Reminder set'}
+                  {r.actionType ? t('Sent for your approval') : t('Reminder set')}
                 </Text>
               </View>
             ) : (
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <Button
-                  title="Apply"
+                  title={t("Apply")}
                   icon="check"
                   size="medium"
                   loading={apply.isPending && apply.variables === r.id}
@@ -195,7 +203,7 @@ export default function Assistant() {
                     }
                   }}
                 />
-                <Button title="Not now" icon="clock" size="medium" variant="secondary" onPress={() => setHidden((h) => [...h, r.id])} />
+                <Button title={t("Not now")} icon="clock" size="medium" variant="secondary" onPress={() => setHidden((h) => [...h, r.id])} />
               </View>
             )}
           </Card>
@@ -216,7 +224,7 @@ export default function Assistant() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 8, paddingHorizontal: 4 }}>
           <View style={{ flex: 1, height: 0.5, backgroundColor: c.separator }} />
           <Text variant="caption" color="secondary" weight="600">
-            Chat
+            {t('Chat')}
           </Text>
           <View style={{ flex: 1, height: 0.5, backgroundColor: c.separator }} />
         </View>
@@ -264,11 +272,11 @@ export default function Assistant() {
                         Card → Savings · {formatAmount(a.amount ?? 0, cur)}
                       </Text>
                       <Text variant="footnote" color="warnInk">
-                        Pending your approval
+                        {t('Pending your approval')}
                       </Text>
                     </View>
                     <Text variant="callout" color="warnInk" weight="600">
-                      Review
+                      {t('Review')}
                     </Text>
                   </PressableScale>
                 ) : null}
@@ -304,7 +312,7 @@ export default function Assistant() {
                   >
                     <Icon name="check" size={12} color={c.positiveInk} strokeWidth={2.6} />
                     <Text variant="caption" color="positiveInk" weight="600">
-                      Done automatically
+                      {t('Done automatically')}
                     </Text>
                   </View>
                 ) : null}
@@ -368,10 +376,10 @@ export default function Assistant() {
         </ScrollView>
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', paddingHorizontal: 12 }}>
           <TextInput
-            accessibilityLabel="Message FeMate"
+            accessibilityLabel={t("Message FeMate")}
             value={draft}
             onChangeText={setDraft}
-            placeholder="Ask about your money…"
+            placeholder={t("Ask about your money…")}
             placeholderTextColor={c.secondary}
             returnKeyType="send"
             onSubmitEditing={() => send(draft)}
@@ -390,7 +398,7 @@ export default function Assistant() {
           <PressableScale
             onPress={() => send(draft)}
             accessibilityRole="button"
-            accessibilityLabel="Send"
+            accessibilityLabel={t("Send")}
             disabled={!draft.trim()}
             style={{
               width: 44,

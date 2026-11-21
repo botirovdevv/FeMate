@@ -2,6 +2,8 @@
 // plus the matching earlier period for comparisons. Local time, like the rest of the app.
 import type { Category } from '@femate/shared';
 
+import { monthShort, monthYear, shortDate, t, tn, weekdayShort } from '@/i18n';
+
 export type Period = 'week' | 'month';
 
 export interface Range {
@@ -16,7 +18,6 @@ export interface Bar {
   future: boolean;
 }
 
-const DAY = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export const dayKey = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -54,27 +55,32 @@ export function previousRange(period: Period, offset = 0, now = new Date()): Ran
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
-const short = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 
-/** "12–18 Oct", "28 Sept – 4 Oct", "October 2026". */
+/** "12–18 Oct", "28 Sep – 4 Oct", "October 2026" (in the app language). */
 export function rangeLabel(period: Period, r: Range): string {
-  if (period === 'month') return r.from.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  if (period === 'month') return monthYear(r.from);
   const sameMonth = r.from.getMonth() === r.to.getMonth();
-  return sameMonth ? `${r.from.getDate()}–${short(r.to)}` : `${short(r.from)} – ${short(r.to)}`;
+  return sameMonth ? `${r.from.getDate()}–${shortDate(r.to)}` : `${shortDate(r.from)} – ${shortDate(r.to)}`;
 }
 
 /** "This week", "Last week", "3 weeks ago", "This month", "Last month", "5 months ago". */
 export function offsetLabel(period: Period, offset: number): string {
-  if (offset === 0) return `This ${period}`;
-  if (offset === 1) return `Last ${period}`;
-  return `${offset} ${period}s ago`;
+  if (period === 'week') {
+    if (offset === 0) return t('This week');
+    if (offset === 1) return t('Last week');
+    return tn('{n} week ago|{n} weeks ago', offset);
+  }
+  if (offset === 0) return t('This month');
+  if (offset === 1) return t('Last month');
+  return tn('{n} month ago|{n} months ago', offset);
 }
 
 /** Bars for the chart: 7 days for a week, 4 week-long buckets for a month. */
 export function bars(period: Period, r: Range, byDay: Map<string, number>, now = new Date()): Bar[] {
   const today = dayKey(now);
   if (period === 'week') {
-    return DAY.map((label, i) => {
+    return [0, 1, 2, 3, 4, 5, 6].map((i) => {
+      const label = weekdayShort(i);
       const d = new Date(r.from);
       d.setDate(r.from.getDate() + i);
       return { label, amount: byDay.get(dayKey(d)) ?? 0, isToday: dayKey(d) === today, future: d > now };
@@ -95,7 +101,7 @@ export function bars(period: Period, r: Range, byDay: Map<string, number>, now =
       amount += byDay.get(k) ?? 0;
       if (k === today) isToday = true;
     }
-    const label = i === 0 ? `${r.from.toLocaleDateString('en-GB', { month: 'short' })} ${a}–${b}` : `${a}–${b}`;
+    const label = i === 0 ? `${monthShort(r.from.getMonth())} ${a}–${b}` : `${a}–${b}`;
     return { label, amount, isToday, future: new Date(r.from.getFullYear(), r.from.getMonth(), a) > now };
   });
 }

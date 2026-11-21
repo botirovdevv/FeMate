@@ -9,6 +9,7 @@ import { useTheme } from '@/theme';
 import { Icon, type IconName } from './Icon';
 import { TAB_BAR_SPACE } from './PillTabBar';
 import { font, haptic, LoadingDots, PressableScale, Text } from './ui';
+import { useT } from '@/i18n';
 
 export interface SlatePalette {
   heroBg: string;
@@ -74,6 +75,7 @@ export function HeroButton({ icon, label, onPress }: { icon: IconName; label: st
 /** Black block at the top of the page with a title, optional back button and right-side buttons. */
 export function HeroHeader({ title, back, right, children }: { title: string; back?: boolean; right?: ReactNode; children?: ReactNode }) {
   const s = useSlate();
+  const { t } = useT();
   const insets = useSafeAreaInsets();
   return (
     <View
@@ -88,7 +90,7 @@ export function HeroHeader({ title, back, right, children }: { title: string; ba
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 }}>
-        {back ? <HeroButton icon="chevronLeft" label="Back" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} /> : null}
+        {back ? <HeroButton icon="chevronLeft" label={t('Back')} onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} /> : null}
         <Text accessibilityRole="header" style={{ flex: 1, fontSize: 30, lineHeight: 36, fontWeight: '600', letterSpacing: -0.6, color: s.heroText }} numberOfLines={1}>
           {title}
         </Text>
@@ -150,12 +152,13 @@ export function CircleAction({
   badge?: number;
 }) {
   const s = useSlate();
+  const { tn } = useT();
   return (
     <PressableScale
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
-      accessibilityLabel={badge ? `${label}, ${badge} waiting` : label}
+      accessibilityLabel={badge ? `${label}, ${tn('{n} waiting|{n} waiting', badge)}` : label}
       style={{ alignItems: 'center', gap: 8, flex: 1, opacity: disabled ? 0.4 : 1 }}
     >
       <View

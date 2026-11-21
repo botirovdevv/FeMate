@@ -7,14 +7,16 @@ import { Button, IconTile, PressableScale, Text } from '@/components/ui';
 import { useSettings } from '@/store/settings';
 import { space, useTheme } from '@/theme';
 import { dark as darkPalette, light as lightPalette, type Palette } from '@/theme/colors';
+import { msg, useT } from '@/i18n';
 
 const OPTIONS = [
-  { id: 'light', label: 'Light', hint: 'White background', palette: lightPalette },
-  { id: 'dark', label: 'Dark', hint: 'Black background', palette: darkPalette },
+  { id: 'light', label: msg('Light'), hint: msg('White background'), palette: lightPalette },
+  { id: 'dark', label: msg('Dark'), hint: msg('Black background'), palette: darkPalette },
 ] as const;
 
 // Right after sign-up: pick the app's background. Light is preselected and is what you get if you just continue.
 export default function AppearanceSetup() {
+  const { t } = useT();
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const { appearance, setAppearance } = useSettings();
@@ -34,10 +36,10 @@ export default function AppearanceSetup() {
       <View style={{ gap: 12 }}>
         <IconTile name="sun" bg={c.accent} fg={c.onAccent} size={64} iconSize={30} />
         <Text variant="title" style={{ fontSize: 30 }} accessibilityRole="header">
-          Choose your look
+          {t('Choose your look')}
         </Text>
         <Text variant="callout" color="secondary">
-          Pick the background colour for FeMate. You can change it any time in Settings → Appearance.
+          {t('Pick the background colour for FeMate. You can change it any time in Settings → Appearance.')}
         </Text>
       </View>
 
@@ -49,7 +51,7 @@ export default function AppearanceSetup() {
               <PressableScale
                 accessibilityRole="radio"
                 accessibilityState={{ checked: on }}
-                accessibilityLabel={`${o.label}: ${o.hint}`}
+                accessibilityLabel={`${t(o.label)}: ${t(o.hint)}`}
                 onPress={() => setAppearance(o.id)}
                 style={{
                   borderRadius: 22,
@@ -77,9 +79,9 @@ export default function AppearanceSetup() {
                     {on ? <Icon name="check" size={13} color={c.onAccent} strokeWidth={3} /> : null}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text variant="headline">{o.label}</Text>
+                    <Text variant="headline">{t(o.label)}</Text>
                     <Text variant="caption" color="secondary">
-                      {o.hint}
+                      {t(o.hint)}
                     </Text>
                   </View>
                 </View>
@@ -90,7 +92,7 @@ export default function AppearanceSetup() {
       </View>
 
       <View style={{ flex: 1 }} />
-      <Button title="Continue" iconRight="arrowRight" onPress={() => router.replace('/onboarding')} />
+      <Button title={t("Continue")} iconRight="arrowRight" onPress={() => router.replace('/onboarding')} />
     </View>
   );
 }

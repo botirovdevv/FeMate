@@ -5,6 +5,7 @@ import { useTheme } from '@/theme';
 import { Icon } from './Icon';
 import { KeyboardInput } from './KeyboardScreen';
 import { font, Text } from './ui';
+import { useT } from '@/i18n';
 
 /** Labeled input on a soft card (reference Login). `secure` adds a show/hide eye. */
 export function AuthField({
@@ -16,6 +17,7 @@ export function AuthField({
   const { c } = useTheme();
   const [show, setShow] = useState(false);
   const [focused, setFocused] = useState(false);
+  const { t } = useT();
   return (
     <View style={{ gap: 8 }}>
       <Text variant="footnote" weight="600" style={{ fontSize: 14 }}>
@@ -53,7 +55,7 @@ export function AuthField({
         {secure ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={show ? 'Hide password' : 'Show password'}
+            accessibilityLabel={show ? t('Hide password') : t('Show password')}
             onPress={() => setShow((v) => !v)}
             style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
           >

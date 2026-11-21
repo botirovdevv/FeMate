@@ -9,6 +9,7 @@ import { haptic, Text } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { formatMoney, shortAmount } from '@/lib/format';
 import { useFamily, useUpdateFamily } from '@/lib/queries';
+import { useT } from '@/i18n';
 
 // Presets in so'm, shown in the family's currency and rounded to a readable step.
 const PRESETS = { budget: [1_000_000, 3_000_000, 5_000_000, 10_000_000], threshold: [100_000, 200_000, 500_000, 1_000_000] } as const;
@@ -19,6 +20,7 @@ export default function FamilyBudgetSheet() {
   const kind = field === 'threshold' ? 'threshold' : 'budget';
   const family = useFamily();
   const update = useUpdateFamily();
+  const { t } = useT();
   const s = useSlate();
   const f = family.data?.family;
   const current = f ? (kind === 'budget' ? f.monthlyBudget : f.approvalThreshold) : 0;
@@ -50,11 +52,11 @@ export default function FamilyBudgetSheet() {
 
   return (
     <SheetBody
-      title={kind === 'budget' ? 'Monthly budget' : 'Approval limit'}
+      title={kind === 'budget' ? t('Monthly budget') : t('Approval limit')}
       note={
         kind === 'budget'
-          ? `${f.name} · ${formatMoney(spent, cur)} spent so far`
-          : 'A member’s family spend above this waits for your OK. Your own spends never do.'
+          ? t('{family} · {amount} spent so far', { family: f.name, amount: formatMoney(spent, cur) })
+          : t('A member’s family spend above this waits for your OK. Your own spends never do.')
       }
     >
       <Text
@@ -63,10 +65,10 @@ export default function FamilyBudgetSheet() {
         numberOfLines={1}
         adjustsFontSizeToFit
       >
-        {kind === 'threshold' && v === 0 ? 'Every spend' : formatMoney(v, cur)}
+        {kind === 'threshold' && v === 0 ? t('Every spend') : formatMoney(v, cur)}
       </Text>
       <Slider
-        accessibilityLabel={kind === 'budget' ? 'Monthly budget' : 'Approval limit'}
+        accessibilityLabel={kind === 'budget' ? t('Monthly budget') : t('Approval limit')}
         value={v}
         minimumValue={0}
         maximumValue={max}
@@ -82,10 +84,10 @@ export default function FamilyBudgetSheet() {
           <PillChip key={p} label={shortAmount(p, cur)} selected={p === v} onPress={() => setValue(p)} />
         ))}
       </View>
-      {tooLow ? <Notice tone="warn" text={`The family already spent ${formatMoney(spent, cur)} this month, so new family spends will be blocked.`} /> : null}
-      {kind === 'threshold' && v > f.monthlyBudget ? <Notice tone="warn" text="The approval limit can’t be above the monthly budget." /> : null}
+      {tooLow ? <Notice tone="warn" text={t('The family already spent {amount} this month, so new family spends will be blocked.', { amount: formatMoney(spent, cur) })} /> : null}
+      {kind === 'threshold' && v > f.monthlyBudget ? <Notice tone="warn" text={t("The approval limit can’t be above the monthly budget.")} /> : null}
       {error ? <Notice text={error} /> : null}
-      <PillButton title={kind === 'budget' ? 'Save budget' : 'Save limit'} onPress={() => void save()} loading={update.isPending} disabled={invalid || v === current} />
+      <PillButton title={kind === 'budget' ? t('Save budget') : t('Save limit')} onPress={() => void save()} loading={update.isPending} disabled={invalid || v === current} />
     </SheetBody>
   );
 }

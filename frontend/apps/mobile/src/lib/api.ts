@@ -48,6 +48,7 @@ import { Platform } from 'react-native';
 
 import { useSession } from '@/store/session';
 import { ApiError, mockApi } from './mock';
+import { currentLang, t } from '@/i18n';
 
 export { ApiError };
 
@@ -62,12 +63,12 @@ const VOICE_TIMEOUT_MS = 90_000;
 
 const networkError = (e: unknown) =>
   (e as { name?: string })?.name === 'AbortError' || (e as { name?: string })?.name === 'TimeoutError'
-    ? new ApiError('TIMEOUT', 'The FeMate server is taking too long to answer. Check your connection and try again.')
-    : new ApiError('NETWORK', 'Can’t reach the FeMate server. Check your connection and try again.');
+    ? new ApiError('TIMEOUT', t('The FeMate server is taking too long to answer. Check your connection and try again.'))
+    : new ApiError('NETWORK', t('Can’t reach the FeMate server. Check your connection and try again.'));
 
 async function sessionEnded(): Promise<never> {
   await useSession.getState().signOut();
-  throw new ApiError('UNAUTHORIZED', 'Your session has ended. Sign in again.');
+  throw new ApiError('UNAUTHORIZED', t('Your session has ended. Sign in again.'));
 }
 
 async function fetchWithTimeout(url: string, init: RequestInit, ms: number): Promise<Response> {
@@ -85,6 +86,8 @@ async function http<T>(method: string, path: string, body?: unknown, timeoutMs =
   const init: RequestInit = {
     method,
     headers: {
+      // The server answers in the app's language (errors, assistant, tips).
+      'Accept-Language': currentLang(),
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
@@ -109,7 +112,7 @@ async function http<T>(method: string, path: string, body?: unknown, timeoutMs =
   const data = (await res.json().catch(() => null)) as T | ApiErrorBody | null;
   if (!res.ok) {
     const err = (data as ApiErrorBody | null)?.error;
-    throw new ApiError(err?.code ?? `HTTP_${res.status}`, err?.message ?? 'Something went wrong. Try again.');
+    throw new ApiError(err?.code ?? `HTTP_${res.status}`, err?.message ?? t('Something went wrong. Try again.'));
   }
   return data as T;
 }
@@ -142,7 +145,7 @@ async function uploadVoice(uri: string, family: boolean): Promise<VoiceResult> {
       `${BASE_URL}/transactions/voice${family ? '?family=true' : ''}`,
       {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: { 'Accept-Language': currentLang(), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: form,
       },
       VOICE_TIMEOUT_MS,
@@ -155,9 +158,9 @@ async function uploadVoice(uri: string, family: boolean): Promise<VoiceResult> {
   if (!res.ok) {
     const err = (data as ApiErrorBody | null)?.error;
     if (err?.code === 'STT_UNAVAILABLE' || res.status === 503) {
-      throw new ApiError('STT_UNAVAILABLE', 'Voice input is off on the server right now. Type the expense instead.');
+      throw new ApiError('STT_UNAVAILABLE', t('Voice input is off on the server right now. Type the expense instead.'));
     }
-    throw new ApiError(err?.code ?? `HTTP_${res.status}`, err?.message ?? 'Couldn’t process the recording. Try again.');
+    throw new ApiError(err?.code ?? `HTTP_${res.status}`, err?.message ?? t('Couldn’t process the recording. Try again.'));
   }
   return data as VoiceResult;
 }
@@ -230,5 +233,5 @@ export const api = {
 };
 
 export function errorMessage(e: unknown): string {
-  return e instanceof Error ? e.message : 'Something went wrong. Try again.';
+  return e instanceof Error ? e.message : t('Something went wrong. Try again.');
 }

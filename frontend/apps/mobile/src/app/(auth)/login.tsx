@@ -10,8 +10,10 @@ import { Button, haptic, Text } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { useSession } from '@/store/session';
 import { useTheme } from '@/theme';
+import { useT } from '@/i18n';
 
 export default function Login() {
+  const { t } = useT();
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   const signIn = useSession((s) => s.signIn);
@@ -27,7 +29,7 @@ export default function Login() {
     setError(null);
     if (!email.trim() || !password) {
       haptic('warning');
-      setError('Enter your email and password, or tap “Use demo account”.');
+      setError(t('Enter your email and password, or tap “Use demo account”.'));
       return;
     }
     setBusy(true);
@@ -46,18 +48,18 @@ export default function Login() {
 
   return (
     <KeyboardScreen style={{ backgroundColor: c.bg }} bounces={false}>
-      <AuthHero compact={typing} subtitle="Welcome back! Sign in to continue. Your AI money co-pilot moves money only when you say so." />
+      <AuthHero compact={typing} subtitle={t("Welcome back! Sign in to continue. Your AI money co-pilot moves money only when you say so.")} />
 
       <View style={{ flex: 1, paddingHorizontal: 28, paddingTop: typing ? 20 : 12, paddingBottom: insets.bottom + 20, gap: 18 }}>
         <Text variant="title" accessibilityRole="header">
-          Sign in
+          {t('Sign in')}
         </Text>
 
         <AuthField
-          label="Email"
+          label={t("Email")}
           value={email}
           onChangeText={setEmail}
-          placeholder="Enter your email"
+          placeholder={t("Enter your email")}
           autoCapitalize="none"
           autoComplete="email"
           keyboardType="email-address"
@@ -67,11 +69,11 @@ export default function Login() {
         />
         <AuthField
           ref={passwordRef}
-          label="Password"
+          label={t("Password")}
           secure
           value={password}
           onChangeText={setPassword}
-          placeholder="Enter your password"
+          placeholder={t("Enter your password")}
           autoComplete="current-password"
           textContentType="password"
           returnKeyType="go"
@@ -83,12 +85,12 @@ export default function Login() {
           </Text>
         ) : null}
 
-        <Button title="Sign in" onPress={submit} loading={busy} />
+        <Button title={t("Sign in")} onPress={submit} loading={busy} />
 
-        <Divider label="Or" />
+        <Divider label={t("Or")} />
 
         <Button
-          title="Use demo account · aziz@femate.uz"
+          title={t("Use demo account · aziz@femate.uz")}
           icon="user"
           variant="secondary"
           onPress={() => {
@@ -102,12 +104,12 @@ export default function Login() {
         <View style={{ flex: 1, minHeight: 12 }} />
         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
           <Text variant="callout" color="secondary">
-            Don’t have an account?
+            {t('Don’t have an account?')}
           </Text>
           <Link href="/register" asChild>
             <Pressable accessibilityRole="link" style={{ minHeight: 44, justifyContent: 'center' }}>
               <Text variant="callout" weight="700">
-                Sign up
+                {t('Sign up')}
               </Text>
             </Pressable>
           </Link>

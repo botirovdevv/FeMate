@@ -1,4 +1,5 @@
 import { CURRENCY_INFO, toMajor, toMinor, type Category, type Currency } from '@femate/shared';
+import { shortDate, t } from '@/i18n';
 
 const group = (whole: number) => String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
@@ -58,7 +59,7 @@ export function parseAmountInput(text: string, c: Currency = 'UZS'): number {
   return toMinor(Number(`${m[1] || 0}.${m[2] ?? ''}0`), c);
 }
 
-export const categoryLabel: Record<Category, string> = {
+const CATEGORY_EN: Record<Category, string> = {
   transport: 'Transport',
   food: 'Food',
   utilities: 'Utilities',
@@ -69,6 +70,9 @@ export const categoryLabel: Record<Category, string> = {
   transfer: 'Transfer',
   other: 'Other',
 };
+// Read in the current language each time (the screens re-render on a language change).
+// t('Transport') t('Food') t('Utilities') t('Shopping') t('Health') t('Entertainment') t('Education') t('Transfer') t('Other')
+export const categoryLabel = new Proxy(CATEGORY_EN, { get: (en, k: string) => t(en[k as Category] ?? k) }) as Record<Category, string>;
 
 export function formatTime(iso: string, now = new Date()): string {
   const d = new Date(iso);
@@ -77,13 +81,13 @@ export function formatTime(iso: string, now = new Date()): string {
   yesterday.setDate(now.getDate() - 1);
   const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   if (sameDay) return hm;
-  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  if (d.toDateString() === yesterday.toDateString()) return t('Yesterday');
+  return shortDate(d);
 }
 
 export function greeting(now = new Date()): string {
   const h = now.getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 18) return 'Good afternoon';
-  return 'Good evening';
+  if (h < 12) return t('Good morning');
+  if (h < 18) return t('Good afternoon');
+  return t('Good evening');
 }

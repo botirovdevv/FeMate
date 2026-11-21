@@ -8,13 +8,14 @@ export type { Palette } from './colors';
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24 } as const;
 export const radius = { sm: 12, md: 16, lg: 20, xl: 24, pill: 999 } as const;
 
-// Plus Jakarta Sans, one file per weight (loaded in app/_layout.tsx). Text maps fontWeight to these.
+// Manrope (Latin + Cyrillic, for Uzbek, Russian and English), one file per weight (loaded in app/_layout.tsx).
+// Text maps fontWeight to these.
 export const FONTS = {
-  '400': 'PlusJakartaSans_400Regular',
-  '500': 'PlusJakartaSans_500Medium',
-  '600': 'PlusJakartaSans_600SemiBold',
-  '700': 'PlusJakartaSans_700Bold',
-  '800': 'PlusJakartaSans_800ExtraBold',
+  '400': 'Manrope_400Regular',
+  '500': 'Manrope_500Medium',
+  '600': 'Manrope_600SemiBold',
+  '700': 'Manrope_700Bold',
+  '800': 'Manrope_800ExtraBold',
 } as const;
 
 /** The font file for a weight: custom fonts can't be bolded by fontWeight on Android, so each weight is its own family. */

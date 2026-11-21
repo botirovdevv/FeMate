@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
-    "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
+    "@expo-google-fonts/manrope": "^0.4.3",
     "@expo-google-fonts/sora": "^0.4.2",
     "@femate/shared": "workspace:*",
     "@react-native-community/slider": "5.2.0",

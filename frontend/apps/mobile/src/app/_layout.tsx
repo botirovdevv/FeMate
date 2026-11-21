@@ -1,8 +1,8 @@
-import { PlusJakartaSans_400Regular } from '@expo-google-fonts/plus-jakarta-sans/400Regular';
-import { PlusJakartaSans_500Medium } from '@expo-google-fonts/plus-jakarta-sans/500Medium';
-import { PlusJakartaSans_600SemiBold } from '@expo-google-fonts/plus-jakarta-sans/600SemiBold';
-import { PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans/700Bold';
-import { PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans/800ExtraBold';
+import { Manrope_400Regular } from '@expo-google-fonts/manrope/400Regular';
+import { Manrope_500Medium } from '@expo-google-fonts/manrope/500Medium';
+import { Manrope_600SemiBold } from '@expo-google-fonts/manrope/600SemiBold';
+import { Manrope_700Bold } from '@expo-google-fonts/manrope/700Bold';
+import { Manrope_800ExtraBold } from '@expo-google-fonts/manrope/800ExtraBold';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { router, Stack, type ErrorBoundaryProps } from 'expo-router';
@@ -18,20 +18,22 @@ import { Button, Text } from '@/components/ui';
 import { queryClient } from '@/lib/queries';
 import { useSession } from '@/store/session';
 import { useTheme } from '@/theme';
+import { useT } from '@/i18n';
 
 // Shown instead of a white screen when a screen throws while rendering.
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   const { c } = useTheme();
+  const { t } = useT();
   return (
     <View style={{ flex: 1, backgroundColor: c.bg, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 14 }}>
       <Icon name="info" size={40} color={c.secondary} />
       <Text variant="title2" style={{ textAlign: 'center' }}>
-        Something went wrong on this screen
+        {t('Something went wrong on this screen')}
       </Text>
       <Text variant="footnote" color="secondary" style={{ textAlign: 'center' }} selectable>
         {error.message}
       </Text>
-      <Button title="Try again" icon="refresh" size="medium" onPress={retry} />
+      <Button title={t("Try again")} icon="refresh" size="medium" onPress={retry} />
     </View>
   );
 }
@@ -41,11 +43,11 @@ export default function RootLayout() {
   const { c, dark } = useTheme();
   const slate = useSlate();
   const [fontsLoaded, fontError] = useFonts({
-    PlusJakartaSans_400Regular,
-    PlusJakartaSans_500Medium,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_700Bold,
-    PlusJakartaSans_800ExtraBold,
+    Manrope_400Regular,
+    Manrope_500Medium,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+    Manrope_800ExtraBold,
   });
 
   useEffect(() => {
