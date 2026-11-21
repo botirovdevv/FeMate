@@ -1,12 +1,11 @@
 import type { Category, Transaction } from '@femate/shared';
-import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 
-import { Icon } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
-import { Card, Chip, ErrorRow, IconTile, Text } from '@/components/ui';
-import { categoryIcon, sourceIcon, sourceLabel } from '@/lib/categories';
+import { SectionTitle, SlateRow } from '@/components/slate';
+import { Chip, ErrorRow, Text } from '@/components/ui';
+import { categoryIcon, sourceLabel } from '@/lib/categories';
 import { useCurrency } from '@/lib/currency';
 import { categoryLabel, formatAmount, formatMoney } from '@/lib/format';
 import { useAllTransactions } from '@/lib/queries';
@@ -46,35 +45,34 @@ export default function Transactions() {
     return [...map.values()];
   }, [txs.data, filter]);
 
+  const shownOut = groups.reduce((n, g) => n + g.total, 0);
   return (
     <Screen
       title="Transactions"
       refreshing={txs.isRefetching}
       onRefresh={() => void txs.refetch()}
-      header={
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-          style={{ flexDirection: 'row', alignItems: 'center', height: 44, alignSelf: 'flex-start', marginBottom: -8 }}
-        >
-          <Icon name="chevronLeft" size={22} color={c.accent} strokeWidth={2.4} />
-          <Text variant="body" color="accent" style={{ fontSize: 17 }}>
-            Back
+      back
+      hero={
+        <View style={{ gap: 2 }}>
+          <Text variant="footnote" color="rgba(255,255,255,0.56)" style={{ fontSize: 14 }}>
+            {filter === 'all' ? 'Spent in this list' : `Spent on ${categoryLabel[filter].toLowerCase()}`}
           </Text>
-        </Pressable>
+          <Text variant="largeTitle" color="#FFFFFF" tabular style={{ fontSize: 40, lineHeight: 48, letterSpacing: -1 }} numberOfLines={1} adjustsFontSizeToFit>
+            {formatMoney(shownOut, cur)}
+          </Text>
+        </View>
       }
     >
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} style={{ marginHorizontal: -16 }}>
-        <View style={{ width: 8 }} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} style={{ marginHorizontal: -20 }}>
+        <View style={{ width: 12 }} />
         <Chip label="All" selected={filter === 'all'} onPress={() => setFilter('all')} />
         {cats.map((cat) => (
           <Chip key={cat} label={categoryLabel[cat]} icon={categoryIcon[cat]} selected={filter === cat} onPress={() => setFilter(cat)} />
         ))}
-        <View style={{ width: 8 }} />
+        <View style={{ width: 12 }} />
       </ScrollView>
 
-      {txs.isLoading ? <ActivityIndicator color={c.accent} style={{ paddingVertical: 24 }} /> : null}
+      {txs.isLoading ? <ActivityIndicator color={c.secondary} style={{ paddingVertical: 24 }} /> : null}
       {txs.isError ? <ErrorRow message="Couldn’t load your transactions." onRetry={() => void txs.refetch()} /> : null}
       {!txs.isLoading && groups.length === 0 && !txs.isError ? (
         <Text variant="callout" color="secondary" style={{ textAlign: 'center', paddingVertical: 24 }}>
@@ -83,64 +81,40 @@ export default function Transactions() {
       ) : null}
 
       {groups.map((g) => (
-        <View key={g.title} style={{ gap: 8 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4 }}>
-            <Text variant="footnote" color="secondary" weight="600">
-              {g.title}
-            </Text>
+        <View key={g.title}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <SectionTitle title={g.title} />
             {g.total > 0 ? (
               <Text variant="footnote" color="secondary" tabular>
                 −{formatAmount(g.total, cur)}
               </Text>
             ) : null}
           </View>
-          <Card padded={false} style={{ paddingVertical: 4 }}>
-            {g.items.map((t, i) => (
-              <View
+          {g.items.map((t, i) => {
+            const income = t.direction === 'in' && t.category !== 'transfer';
+            return (
+              <SlateRow
                 key={t.id}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  paddingVertical: 10,
-                  paddingHorizontal: 16,
-                  borderTopWidth: i === 0 ? 0 : 0.5,
-                  borderTopColor: c.separator,
-                }}
-              >
-                <IconTile
-                  name={categoryIcon[t.category]}
-                  bg={t.category === 'transfer' ? c.accentTint : c.fill}
-                  fg={t.category === 'transfer' ? c.accent : c.label}
-                  size={40}
-                  iconSize={20}
-                  rounded={20}
-                />
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text variant="body" weight="500" numberOfLines={1}>
-                    {t.description}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                    <Icon name={sourceIcon[t.source]} size={13} color={c.secondary} strokeWidth={2.2} />
-                    <Text variant="footnote" color="secondary" numberOfLines={1} style={{ flexShrink: 1 }}>
-                      {categoryLabel[t.category]} · {hm(t.occurredAt)} · {sourceLabel[t.source]}
+                icon={income ? 'plus' : categoryIcon[t.category]}
+                title={t.description}
+                subtitle={`${categoryLabel[t.category]} · ${hm(t.occurredAt)} · ${sourceLabel[t.source]}${t.familyId ? ' · Family' : ''}`}
+                last={i === g.items.length - 1}
+                right={
+                  <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                    <Text variant="callout" weight="600" tabular color={income ? c.positive : t.category === 'transfer' ? c.secondary : c.label}>
+                      {t.direction === 'in' ? '+' : t.category === 'transfer' ? '' : '−'}
+                      {formatAmount(t.amount, cur)}
                     </Text>
+                    {t.original ? (
+                      <Text variant="footnote" color="secondary" tabular>
+                        {formatMoney(t.original.amount, t.original.currency)}
+                      </Text>
+                    ) : null}
                   </View>
-                </View>
-                <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                  <Text variant="body" weight="600" tabular color={t.direction === 'in' && t.category !== 'transfer' ? c.positive : t.category === 'transfer' ? c.secondary : c.label}>
-                    {t.direction === 'in' ? '+' : t.category === 'transfer' ? '' : '−'}
-                    {formatAmount(t.amount, cur)}
-                  </Text>
-                  {t.original ? (
-                    <Text variant="footnote" color="secondary" tabular>
-                      {formatMoney(t.original.amount, t.original.currency)}
-                    </Text>
-                  ) : null}
-                </View>
-              </View>
-            ))}
-          </Card>
+                }
+              />
+            );
+          })}
         </View>
       ))}
       {txs.data?.nextCursor ? (

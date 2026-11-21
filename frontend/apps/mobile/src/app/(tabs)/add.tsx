@@ -239,7 +239,7 @@ export default function Add() {
               gap: 6,
             }}
           >
-            <Icon name={e.icon} size={16} color={c.accent} strokeWidth={2} />
+            <Icon name={e.icon} size={16} color={c.label} strokeWidth={1.9} />
             <Text variant="footnote" weight="500" style={{ fontSize: 14 }}>
               {e.label}
             </Text>
@@ -274,8 +274,8 @@ export default function Add() {
         <Card style={{ gap: 16 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Icon name="bot" size={15} color={c.accent} strokeWidth={2} />
-              <Text variant="sectionLabel" color="secondary">
+              <Icon name="bot" size={15} color={c.ai} strokeWidth={2} />
+              <Text variant="sectionLabel" color="aiInk">
                 FeMate understood
               </Text>
             </View>
@@ -351,7 +351,7 @@ export default function Add() {
 
       {busy ? (
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <IconTile name="wave" bg={c.accentTint} fg={c.accent} size={40} iconSize={22} rounded={12} />
+          <IconTile name="wave" bg={c.aiTint} fg={c.ai} size={40} iconSize={22} />
           <Text variant="callout" color="secondary" style={{ flex: 1 }}>
             Listening back to your note…
           </Text>

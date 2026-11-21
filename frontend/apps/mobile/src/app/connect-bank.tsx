@@ -94,7 +94,7 @@ export default function ConnectBank() {
               <Icon name="lock" size={20} color={c.secondary} strokeWidth={2} />
               <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c.secondary }} />
             </View>
-            <IconTile name="bank" bg={dark ? '#3A3A3C' : '#1C1C1E'} fg="#FFFFFF" size={52} iconSize={26} rounded={15} />
+            <IconTile name="bank" bg={c.accent} fg={c.onAccent} size={56} iconSize={26} />
           </View>
           <Text variant="title" style={{ textAlign: 'center' }} accessibilityRole="header">
             {editing ? 'Agent permissions' : 'Connect Sandbox Bank'}
@@ -196,8 +196,8 @@ export default function ConnectBank() {
                         {l.name}
                       </Text>
                       {l.recommended ? (
-                        <View style={{ backgroundColor: c.accentTint, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
-                          <Text variant="caption" color="accentInk" weight="700" style={{ fontSize: 11, letterSpacing: 0.3 }}>
+                        <View style={{ backgroundColor: c.aiTint, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
+                          <Text variant="caption" color="aiInk" weight="700" style={{ fontSize: 11, letterSpacing: 0.3 }}>
                             RECOMMENDED
                           </Text>
                         </View>

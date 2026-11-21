@@ -162,7 +162,7 @@ export default function Onboarding() {
       </View>
 
       <View style={{ gap: 14 }}>
-        <IconTile name={q.icon} bg={c.accentTint} fg={c.accent} size={64} iconSize={34} rounded={20} />
+        <IconTile name={q.icon} bg={c.accent} fg={c.onAccent} size={64} iconSize={30} />
         <Text variant="title" style={{ fontSize: 30, lineHeight: 35 }} accessibilityRole="header">
           {q.title}
         </Text>
@@ -229,16 +229,17 @@ export default function Onboarding() {
 
       <View style={{ flex: 1 }} />
 
-      <View style={{ backgroundColor: c.accentTint, borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-        <IconTile name="receipt" bg={c.accent} fg={c.onAccent} size={40} iconSize={22} rounded={12} />
+      {/* The result, as a small black hero card. */}
+      <View style={{ backgroundColor: c.hero, borderRadius: 24, padding: 18, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+        <IconTile name="receipt" bg="#FFFFFF" fg="#000000" size={44} iconSize={22} />
         <View style={{ gap: 2, flex: 1 }}>
-          <Text variant="footnote" color="accentInk" weight="600">
+          <Text variant="footnote" color="rgba(255,255,255,0.6)" weight="600">
             Your daily allowance
           </Text>
-          <Text variant="title2" color="accentInk" tabular style={{ fontSize: 24 }} numberOfLines={1} adjustsFontSizeToFit>
+          <Text variant="title" color="#FFFFFF" tabular numberOfLines={1} adjustsFontSizeToFit>
             {formatMoney(allowance, cur)}
           </Text>
-          <Text variant="caption" color="accentInk">
+          <Text variant="caption" color="rgba(255,255,255,0.6)">
             {overBudget && step > 0 ? 'Fixed costs and the goal use up all of your income.' : `(income − fixed − goal) ÷ ${days} days`}
           </Text>
         </View>

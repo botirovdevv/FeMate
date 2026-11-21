@@ -39,7 +39,8 @@ export function Text({
   const { c } = useTheme();
   const resolved = color ? ((c as unknown as Record<string, string>)[color] ?? color) : c.label;
   const flat = StyleSheet.flatten([type[variant] as TextStyle, { color: resolved }, weight ? { fontWeight: weight } : null, style]);
-  return <RNText {...rest} style={[flat, font(flat.fontWeight), tabular ? { fontVariant: ['tabular-nums'] } : null]} />;
+  // An explicit fontFamily (e.g. monospace for log events) wins over the app font.
+  return <RNText {...rest} style={[flat, flat.fontFamily ? null : font(flat.fontWeight), tabular ? { fontVariant: ['tabular-nums'] } : null]} />;
 }
 
 /**

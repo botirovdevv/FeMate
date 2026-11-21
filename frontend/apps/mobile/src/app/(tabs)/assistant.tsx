@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/Icon';
 import { InsightCard } from '@/components/InsightCard';
+import { HeroHeader } from '@/components/slate';
 import { TAB_BAR_SPACE } from '@/components/PillTabBar';
 import { Button, Card, haptic, IconTile, PressableScale, Text } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
@@ -117,19 +118,23 @@ export default function Assistant() {
           gap: 14,
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 4 }}>
-          <IconTile name="bot" bg={c.accent} fg={c.onAccent} size={44} iconSize={24} rounded={14} />
-          <View style={{ gap: 2 }}>
-            <Text variant="title" accessibilityRole="header">
-              Assistant
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <Icon name="calendar" size={13} color={c.secondary} strokeWidth={2.2} />
-              <Text variant="footnote" color="secondary">
-                Based on your last 14 days · {perms.data?.agentEnabled === false ? 'agent stopped' : (perms.data?.level ?? '…')}
-              </Text>
+        {/* Full-bleed hero: cancels the list's padding. */}
+        <View style={{ marginHorizontal: -space.lg, marginTop: -(insets.top + space.md), marginBottom: 6 }}>
+          <HeroHeader title="Assistant">
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+              <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: c.ai, alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="bot" size={26} color={c.onAi} strokeWidth={2} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text variant="headline" color="#FFFFFF">
+                  Your money co-pilot
+                </Text>
+                <Text variant="footnote" color="rgba(255,255,255,0.6)">
+                  Based on your last 14 days · {perms.data?.agentEnabled === false ? 'agent stopped' : (perms.data?.level ?? '…')}
+                </Text>
+              </View>
             </View>
-          </View>
+          </HeroHeader>
         </View>
 
         {insight.data ? <InsightCard insight={insight.data} /> : null}
@@ -137,7 +142,7 @@ export default function Assistant() {
         {visibleRecs.map((r) => (
           <Card key={r.id} style={{ padding: 18, gap: 12 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <IconTile name={recIcon[r.id] ?? 'bulb'} bg={c.accentTint} fg={c.accent} size={44} iconSize={24} rounded={13} />
+              <IconTile name={recIcon[r.id] ?? 'bulb'} bg={c.aiTint} fg={c.ai} size={44} iconSize={22} />
               <View style={{ flex: 1, gap: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <Icon name="trend" size={13} color={c.accent} strokeWidth={2.4} />
@@ -161,11 +166,11 @@ export default function Assistant() {
                   height: 40,
                   paddingHorizontal: 16,
                   borderRadius: 20,
-                  backgroundColor: c.accentTint,
+                  backgroundColor: c.positiveTint,
                 }}
               >
-                <Icon name="check" size={16} color={c.accentInk} strokeWidth={2.6} />
-                <Text variant="callout" color="accentInk" weight="600">
+                <Icon name="check" size={16} color={c.positiveInk} strokeWidth={2.6} />
+                <Text variant="callout" color="positiveInk" weight="600">
                   {r.actionType ? 'Sent for your approval' : 'Reminder set'}
                 </Text>
               </View>
@@ -225,14 +230,14 @@ export default function Assistant() {
               key={m.id}
               style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-end', justifyContent: me ? 'flex-end' : 'flex-start' }}
             >
-              {!me ? <IconTile name="bot" bg={c.accent} fg={c.onAccent} size={28} iconSize={15} rounded={14} /> : null}
+              {!me ? <IconTile name="bot" bg={c.ai} fg={c.onAi} size={28} iconSize={15} /> : null}
               <View style={{ maxWidth: '80%', gap: 6, alignItems: me ? 'flex-end' : 'flex-start' }}>
                 <View
                   style={{
                     paddingVertical: 10,
                     paddingHorizontal: 14,
                     borderRadius: 20,
-                    backgroundColor: me ? (dark ? '#2A9E62' : c.accent) : c.card,
+                    backgroundColor: me ? c.accent : c.card,
                   }}
                 >
                   <Text variant="body" color={me ? c.onAccent : c.label} selectable>
@@ -291,14 +296,14 @@ export default function Assistant() {
                       flexDirection: 'row',
                       alignItems: 'center',
                       gap: 5,
-                      backgroundColor: c.accentTint,
+                      backgroundColor: c.positiveTint,
                       paddingHorizontal: 8,
                       paddingVertical: 4,
                       borderRadius: 8,
                     }}
                   >
-                    <Icon name="check" size={12} color={c.accentInk} strokeWidth={2.6} />
-                    <Text variant="caption" color="accentInk" weight="600">
+                    <Icon name="check" size={12} color={c.positiveInk} strokeWidth={2.6} />
+                    <Text variant="caption" color="positiveInk" weight="600">
                       Done automatically
                     </Text>
                   </View>
@@ -309,7 +314,7 @@ export default function Assistant() {
         })}
         {chat.isPending ? (
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            <IconTile name="bot" bg={c.accent} fg={c.onAccent} size={28} iconSize={15} rounded={14} />
+            <IconTile name="bot" bg={c.ai} fg={c.onAi} size={28} iconSize={15} />
             <Text variant="footnote" color="secondary">
               Thinking…
             </Text>

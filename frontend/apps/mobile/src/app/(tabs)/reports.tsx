@@ -134,7 +134,25 @@ export default function Reports() {
   const vs = offset === 0 ? `vs the same days ${period === 'week' ? 'last week' : 'last month'}` : `vs the ${period} before`;
 
   return (
-    <Screen tabs title="Reports" refreshing={summary.isRefetching} onRefresh={() => void summary.refetch()}>
+    <Screen
+      tabs
+      title="Reports"
+      refreshing={summary.isRefetching}
+      onRefresh={() => void summary.refetch()}
+      hero={
+        <View style={{ gap: 2 }}>
+          <Text variant="footnote" color="rgba(255,255,255,0.56)" style={{ fontSize: 14 }}>
+            {offset === 0 ? (period === 'week' ? 'Spent this week' : 'Spent this month so far') : `Spent ${offsetLabel(period, offset).toLowerCase()}`}
+          </Text>
+          <Text variant="largeTitle" color="#FFFFFF" tabular style={{ fontSize: 44, lineHeight: 52, letterSpacing: -1 }} numberOfLines={1} adjustsFontSizeToFit>
+            {formatMoney(total, cur)}
+          </Text>
+          <Text variant="footnote" color="rgba(255,255,255,0.56)" tabular>
+            {rangeLabel(period, range)}
+          </Text>
+        </View>
+      }
+    >
       <Segmented<Period>
         value={period}
         onChange={(p) => {
@@ -196,12 +214,6 @@ export default function Reports() {
               </Text>
             </Pressable>
           </View>
-          <Text variant="title" tabular style={{ fontSize: 28 }}>
-            {formatAmount(total, cur)}{' '}
-            <Text variant="callout" color="secondary" weight="600">
-              {cur}
-            </Text>
-          </Text>
           {compare ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               {delta !== null ? <DeltaPill pct={delta} /> : null}
@@ -237,7 +249,7 @@ export default function Reports() {
                 bottom: (limit / max) * CHART_H,
                 borderTopWidth: 1.5,
                 borderStyle: 'dashed',
-                borderColor: c.accent,
+                borderColor: c.secondary,
                 opacity: 0.7,
               }}
             />
@@ -307,7 +319,7 @@ export default function Reports() {
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View style={{ width: 14, borderTopWidth: 1.5, borderStyle: 'dashed', borderColor: c.accent }} />
+            <View style={{ width: 14, borderTopWidth: 1.5, borderStyle: 'dashed', borderColor: c.secondary }} />
             <Text variant="caption" color="secondary" tabular>
               {period === 'week' ? 'Daily' : 'Weekly'} limit {formatAmount(limit, cur)}
             </Text>
@@ -370,7 +382,7 @@ export default function Reports() {
 
       <Card style={{ gap: 18 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <IconTile name="tune" bg={c.accentTint} fg={c.accent} size={40} iconSize={22} rounded={12} />
+          <IconTile name="tune" bg={c.aiTint} fg={c.ai} size={40} iconSize={22} />
           <View style={{ gap: 2 }}>
             <Text variant="title2">What if…</Text>
             <Text variant="footnote" color="secondary" style={{ fontSize: 14 }}>
@@ -412,15 +424,15 @@ export default function Reports() {
           onDone={(v) => setAsked((a) => ({ ...a, days: v }))}
         />
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <View style={{ flex: 1, backgroundColor: c.accentTint, borderRadius: 16, padding: 14, gap: 2 }}>
-            <Text variant="caption" color="accentInk" weight="600">
+          <View style={{ flex: 1, backgroundColor: c.positiveTint, borderRadius: 18, padding: 14, gap: 2 }}>
+            <Text variant="caption" color="positiveInk" weight="600">
               Per month
             </Text>
-            <Text variant="title2" color="accentInk" tabular style={{ fontSize: 22 }} numberOfLines={1} adjustsFontSizeToFit>
+            <Text variant="title2" color="positiveInk" tabular style={{ fontSize: 22 }} numberOfLines={1} adjustsFontSizeToFit>
               {formatAmount(monthly, cur)}
             </Text>
           </View>
-          <View style={{ flex: 1, backgroundColor: c.fill, borderRadius: 16, padding: 14, gap: 2 }}>
+          <View style={{ flex: 1, backgroundColor: c.fill, borderRadius: 18, padding: 14, gap: 2 }}>
             <Text variant="caption" color="secondary" weight="600">
               Per year
             </Text>
@@ -467,7 +479,7 @@ function NavButton({ icon, label, onPress }: { icon: IconName; label: string; on
 function DeltaPill({ pct, small }: { pct: number; small?: boolean }) {
   const { c } = useTheme();
   const up = pct > 0;
-  const color = pct === 0 ? c.secondary : up ? c.warnInk : c.accentInk;
+  const color = pct === 0 ? c.secondary : up ? c.warnInk : c.positiveInk;
   return (
     <View
       style={{
@@ -477,7 +489,7 @@ function DeltaPill({ pct, small }: { pct: number; small?: boolean }) {
         paddingHorizontal: small ? 6 : 8,
         height: small ? 22 : 24,
         borderRadius: 12,
-        backgroundColor: pct === 0 ? c.fill : up ? c.warnTint : c.accentTint,
+        backgroundColor: pct === 0 ? c.fill : up ? c.warnTint : c.positiveTint,
       }}
     >
       {pct !== 0 ? <Icon name={up ? 'arrowUp' : 'arrowDownRight'} size={small ? 11 : 12} color={color} strokeWidth={2.6} /> : null}

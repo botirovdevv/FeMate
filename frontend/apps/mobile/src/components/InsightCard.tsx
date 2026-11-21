@@ -40,7 +40,8 @@ export function InsightCard({ insight, compact }: { insight: DailyInsight; compa
             {over ? 'Over plan' : 'On track'}
           </Text>
         </View>
-        <Text variant="caption" color="secondary" weight="600">
+        <Icon name="bot" size={14} color={c.ai} strokeWidth={2.2} />
+        <Text variant="caption" color="aiInk" weight="600">
           Today’s check-in
         </Text>
         <View style={{ flex: 1 }} />
