@@ -43,6 +43,7 @@ export default function Assistant() {
   const pending = useActions('pending');
   const [hidden, setHidden] = useState<string[]>([]);
   const [draft, setDraft] = useState('');
+  const [focused, setFocused] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const kb = useKeyboardHeight();
   const scroll = useRef<ScrollView>(null);
@@ -123,7 +124,7 @@ export default function Assistant() {
         ref={scroll}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        contentContainerStyle={{ paddingBottom: composerBottom + 84, flexGrow: 1 }}
+        contentContainerStyle={{ paddingBottom: composerBottom + 92, flexGrow: 1 }}
       >
         {/* Hero: who you're talking to, and today's check-in in one line (the full check-in lives on Today). */}
         <HeroHeader title={t('Assistant')}>
@@ -340,11 +341,20 @@ export default function Assistant() {
         </View>
       </ScrollView>
 
-      {/* Composer: one field and a lime send button. */}
+      {/* Composer: a clearly outlined field on a soft grey fill, and a lime send button. */}
       <BlurView
         intensity={60}
         tint={dark ? 'dark' : 'light'}
-        style={{ position: 'absolute', left: 0, right: 0, bottom: composerBottom, paddingVertical: 10, backgroundColor: c.material }}
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: composerBottom,
+          paddingVertical: 10,
+          backgroundColor: c.material,
+          borderTopWidth: 1,
+          borderTopColor: c.separator,
+        }}
       >
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', paddingHorizontal: 12 }}>
           <TextInput
@@ -355,15 +365,17 @@ export default function Assistant() {
             placeholderTextColor={c.secondary}
             returnKeyType="send"
             onSubmitEditing={() => send(draft)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             style={[
               {
                 flex: 1,
-                height: 48,
-                paddingHorizontal: 18,
-                borderRadius: 24,
-                borderWidth: 1,
-                borderColor: c.separator,
-                backgroundColor: c.bg,
+                height: 52,
+                paddingHorizontal: 20,
+                borderRadius: 26,
+                borderWidth: 1.5,
+                borderColor: focused ? c.label : c.fill2,
+                backgroundColor: c.card,
                 color: c.label,
                 fontSize: 16,
               },
@@ -376,9 +388,9 @@ export default function Assistant() {
             accessibilityLabel={t('Send')}
             disabled={!draft.trim()}
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
+              width: 52,
+              height: 52,
+              borderRadius: 26,
               backgroundColor: draft.trim() ? c.brand : c.fill,
               alignItems: 'center',
               justifyContent: 'center',
