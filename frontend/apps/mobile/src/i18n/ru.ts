@@ -589,4 +589,5 @@ export const ru: Record<string, string> = {
   card: 'карта',
   cash: 'наличные',
   savings: 'накопления',
+  'Spent {amount}': 'Потрачено {amount}',
 };

@@ -98,8 +98,14 @@ export function HeroHeader({ title, back, right, children }: { title: string; ba
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 }}>
-        {back ? <HeroButton icon="chevronLeft" label={t('Back')} onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} /> : null}
-        <Text accessibilityRole="header" style={{ flex: 1, fontSize: 30, lineHeight: 36, fontWeight: '600', letterSpacing: -0.6, color: s.heroText }} numberOfLines={1}>
+        {back ? (
+          <HeroButton icon="chevronLeft" label={t('Back')} onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
+        ) : null}
+        <Text
+          accessibilityRole="header"
+          style={{ flex: 1, fontSize: 30, lineHeight: 36, fontWeight: '600', letterSpacing: -0.6, color: s.heroText }}
+          numberOfLines={1}
+        >
           {title}
         </Text>
         {right ? <View style={{ flexDirection: 'row', gap: 10 }}>{right}</View> : null}
@@ -162,50 +168,54 @@ export function CircleAction({
 }) {
   const s = useSlate();
   const { tn } = useT();
+  // PressableScale puts its style on an inner view, so the wrapper takes the equal share of the row.
   return (
-    <PressableScale
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={badge ? `${label}, ${tn('{n} waiting|{n} waiting', badge)}` : label}
-      style={{ alignItems: 'center', gap: 8, flex: 1, opacity: disabled ? 0.4 : 1 }}
-    >
-      <View
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: 28,
-          borderWidth: active ? 0 : 1,
-          borderColor: s.border,
-          backgroundColor: active ? s.brand : s.bg,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
+    <View style={{ flex: 1, alignItems: 'center' }}>
+      <PressableScale
+        onPress={onPress}
+        disabled={disabled}
+        accessibilityRole="button"
+        accessibilityLabel={badge ? `${label}, ${tn('{n} waiting|{n} waiting', badge)}` : label}
+        style={{ alignItems: 'center', gap: 8, opacity: disabled ? 0.4 : 1 }}
       >
-        <Icon name={icon} size={22} color={active ? s.onBrand : s.text} strokeWidth={1.8} />
-        {badge ? (
-          <View
-            style={{
-              position: 'absolute',
-              top: -2,
-              right: -2,
-              minWidth: 20,
-              height: 20,
-              borderRadius: 10,
-              paddingHorizontal: 5,
-              backgroundColor: s.danger,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{ color: '#FFFFFF', fontSize: 11, lineHeight: 14, fontWeight: '700' }}>{badge}</Text>
-          </View>
-        ) : null}
-      </View>
-      <Text style={{ fontSize: 13, lineHeight: 17, color: s.text }} numberOfLines={1}>
-        {label}
-      </Text>
-    </PressableScale>
+        <View
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            borderWidth: active ? 0 : 1,
+            borderColor: s.border,
+            backgroundColor: active ? s.brand : s.bg,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Icon name={icon} size={22} color={active ? s.onBrand : s.text} strokeWidth={1.8} />
+          {badge ? (
+            <View
+              style={{
+                position: 'absolute',
+                top: -2,
+                right: -2,
+                minWidth: 20,
+                height: 20,
+                borderRadius: 10,
+                paddingHorizontal: 5,
+                backgroundColor: s.danger,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 11, lineHeight: 14, fontWeight: '700' }}>{badge}</Text>
+            </View>
+          ) : null}
+        </View>
+        {/* Long labels (Uzbek, Russian) wrap onto a second centred line instead of running into the next one. */}
+        <Text style={{ fontSize: 12.5, lineHeight: 16, color: s.text, textAlign: 'center', paddingHorizontal: 2 }} numberOfLines={2}>
+          {label}
+        </Text>
+      </PressableScale>
+    </View>
   );
 }
 
@@ -296,7 +306,16 @@ export function StatRows({ rows }: { rows: { label: string; value: string; stron
           }}
         >
           <Text style={{ color: r.strong ? s.text : s.muted, fontSize: 15, fontWeight: r.strong ? '600' : '400' }}>{r.label}</Text>
-          <Text style={{ color: s.text, fontSize: r.strong ? 17 : 15, fontWeight: r.strong ? '700' : '500', fontVariant: ['tabular-nums'], flexShrink: 1, textAlign: 'right' }}>
+          <Text
+            style={{
+              color: s.text,
+              fontSize: r.strong ? 17 : 15,
+              fontWeight: r.strong ? '700' : '500',
+              fontVariant: ['tabular-nums'],
+              flexShrink: 1,
+              textAlign: 'right',
+            }}
+          >
             {r.value}
           </Text>
         </View>
@@ -341,7 +360,16 @@ export function SlateRow({
 }) {
   const s = useSlate();
   const body = (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, borderBottomWidth: last ? 0 : 1, borderBottomColor: s.border }}>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        paddingVertical: 14,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: s.border,
+      }}
+    >
       <View
         style={{
           width: 44,
@@ -391,7 +419,16 @@ export function CodeDigits({ value, length = 6 }: { value: string; length?: numb
       {chars.map((ch, i) => (
         <View
           key={i}
-          style={{ width: 46, height: 60, borderRadius: 14, backgroundColor: s.surface, borderWidth: 1, borderColor: s.border, alignItems: 'center', justifyContent: 'center' }}
+          style={{
+            width: 46,
+            height: 60,
+            borderRadius: 14,
+            backgroundColor: s.surface,
+            borderWidth: 1,
+            borderColor: s.border,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
           <Text style={{ fontSize: 26, fontWeight: '600', color: s.text }}>{ch.trim()}</Text>
         </View>
@@ -422,7 +459,10 @@ export function PillChip({ label, selected, onPress }: { label: string; selected
         justifyContent: 'center',
       }}
     >
-      <Text style={{ fontSize: 14, fontWeight: '600', color: selected ? s.onPrimary : s.text, fontVariant: ['tabular-nums'] }} numberOfLines={1}>
+      <Text
+        style={{ fontSize: 14, fontWeight: '600', color: selected ? s.onPrimary : s.text, fontVariant: ['tabular-nums'] }}
+        numberOfLines={1}
+      >
         {label}
       </Text>
     </PressableScale>
@@ -503,7 +543,10 @@ export function AmountInput({
         placeholderTextColor={s.muted}
         autoFocus={autoFocus}
         maxLength={14}
-        style={[{ fontSize: 44, color: s.text, letterSpacing: -1, textAlign: 'center', minWidth: 60, fontVariant: ['tabular-nums'] }, font('600')]}
+        style={[
+          { fontSize: 44, color: s.text, letterSpacing: -1, textAlign: 'center', minWidth: 60, fontVariant: ['tabular-nums'] },
+          font('600'),
+        ]}
       />
       <Text style={{ fontSize: 20, fontWeight: '500', color: s.muted }}>{currency}</Text>
     </View>
@@ -546,7 +589,19 @@ export function TextField({
         maxLength={maxLength}
         returnKeyType="done"
         onSubmitEditing={onSubmit}
-        style={[{ height: 54, borderRadius: 16, backgroundColor: s.surface, borderWidth: 1, borderColor: s.border, paddingHorizontal: 16, fontSize: 16, color: s.text }, font('400')]}
+        style={[
+          {
+            height: 54,
+            borderRadius: 16,
+            backgroundColor: s.surface,
+            borderWidth: 1,
+            borderColor: s.border,
+            paddingHorizontal: 16,
+            fontSize: 16,
+            color: s.text,
+          },
+          font('400'),
+        ]}
       />
     </View>
   );
@@ -555,5 +610,11 @@ export function TextField({
 /** A short lime bar: the brand mark under hero titles and above sheet titles. */
 export function BrandMark({ style }: { style?: StyleProp<ViewStyle> }) {
   const s = useSlate();
-  return <View accessibilityElementsHidden importantForAccessibility="no" style={[{ width: 28, height: 4, borderRadius: 2, backgroundColor: s.brand }, style]} />;
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no"
+      style={[{ width: 28, height: 4, borderRadius: 2, backgroundColor: s.brand }, style]}
+    />
+  );
 }

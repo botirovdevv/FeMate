@@ -536,7 +536,7 @@ export const uz: Record<string, string> = {
   '{amount} left this month': 'Shu oy {amount} qoldi',
   '{n} waiting for approval|{n} waiting for approval': '{n} ta tasdiq kutmoqda',
   '{n} to approve|{n} to approve': '{n} ta tasdiqlash kerak',
-  'left of {amount}': '{amount} dan qoldi',
+  'left of {amount}': '{amount} byudjetdan qoldi',
   'Over plan': 'Rejadan oshdi',
   'On track': 'Reja bo‘yicha',
   'Today’s check-in': 'Bugungi tekshiruv',
@@ -594,4 +594,5 @@ export const uz: Record<string, string> = {
   card: 'karta',
   cash: 'naqd',
   savings: 'jamg‘arma',
+  'Spent {amount}': 'Sarflandi {amount}',
 };

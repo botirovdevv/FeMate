@@ -25,7 +25,9 @@ export function FamilySummary() {
       style={{ backgroundColor: s.heroBg, borderRadius: 24, padding: 18, gap: 12 }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: s.heroButton, alignItems: 'center', justifyContent: 'center' }}>
+        <View
+          style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: s.heroButton, alignItems: 'center', justifyContent: 'center' }}
+        >
           <Icon name="family" size={18} color={s.heroText} />
         </View>
         <Text style={{ flex: 1, fontSize: 15, fontWeight: '600', color: s.heroText }} numberOfLines={1}>
@@ -39,11 +41,18 @@ export function FamilySummary() {
           <Icon name="chevronRight" size={18} color={s.heroMuted} />
         )}
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-        <Text style={{ fontSize: 28, fontWeight: '600', color: s.heroText, letterSpacing: -0.6, fontVariant: ['tabular-nums'] }} numberOfLines={1} adjustsFontSizeToFit>
+      {/* Amount on its own line, the budget under it: long numbers and translations never run off the card. */}
+      <View style={{ gap: 2 }}>
+        <Text
+          style={{ fontSize: 28, fontWeight: '600', color: s.heroText, letterSpacing: -0.6, fontVariant: ['tabular-nums'] }}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
           {formatMoney(o.budget.remaining, cur)}
         </Text>
-        <Text style={{ fontSize: 13, color: s.heroMuted }}>{t('left of {amount}', { amount: formatMoney(o.budget.limit, cur) })}</Text>
+        <Text style={{ fontSize: 13, color: s.heroMuted }} numberOfLines={1}>
+          {t('left of {amount}', { amount: formatMoney(o.budget.limit, cur) })}
+        </Text>
       </View>
       <SlateProgress value={o.budget.limit > 0 ? o.budget.spent / o.budget.limit : 1} onHero height={6} />
     </PressableScale>

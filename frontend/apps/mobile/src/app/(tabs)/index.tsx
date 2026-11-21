@@ -5,7 +5,17 @@ import { View } from 'react-native';
 import { FamilySummary } from '@/components/FamilySummary';
 import { Icon, type IconName } from '@/components/Icon';
 import { InsightCard } from '@/components/InsightCard';
-import { CircleAction, HeroButton, HeroHeader, SectionTitle, SlateLoading, SlatePage, SlateProgress, SlateRow, useSlate } from '@/components/slate';
+import {
+  CircleAction,
+  HeroButton,
+  HeroHeader,
+  SectionTitle,
+  SlateLoading,
+  SlatePage,
+  SlateProgress,
+  SlateRow,
+  useSlate,
+} from '@/components/slate';
 import { Banner, ErrorRow, PressableScale, Text } from '@/components/ui';
 import { categoryIcon, sourceLabel } from '@/lib/categories';
 import { useCurrency } from '@/lib/currency';
@@ -37,7 +47,9 @@ export default function Home() {
     void Promise.all([accounts.refetch(), summary.refetch(), txs.refetch(), pending.refetch(), insight.refetch(), period.refetch()]);
 
   const categories = useMemo(() => {
-    const all = (period.data?.byCategory ?? []).filter((x) => x.category !== 'transfer' && x.amount > 0).sort((a, b) => b.amount - a.amount);
+    const all = (period.data?.byCategory ?? [])
+      .filter((x) => x.category !== 'transfer' && x.amount > 0)
+      .sort((a, b) => b.amount - a.amount);
     const sum = all.reduce((n, x) => n + x.amount, 0);
     return { top: all.slice(0, 4), sum };
   }, [period.data]);
@@ -62,7 +74,7 @@ export default function Home() {
   const hero = (
     <HeroHeader
       title={firstName ? t('Hello, {name}', { name: firstName }) : greeting()}
-      right={<HeroButton icon="sliders" label={t("Settings")} onPress={() => router.push('/settings')} />}
+      right={<HeroButton icon="sliders" label={t('Settings')} onPress={() => router.push('/settings')} />}
     >
       {s ? (
         <>
@@ -85,16 +97,16 @@ export default function Home() {
             <SlateProgress value={spentRatio} onHero />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
               <Text variant="footnote" color={sl.heroMuted} tabular>
-                Spent {formatAmount(s.todaySpent, cur)}
+                {t('Spent {amount}', { amount: formatAmount(s.todaySpent, cur) })}
               </Text>
               <Text variant="footnote" color={sl.heroMuted} tabular>
-                Daily limit {formatAmount(s.dailyAllowance, cur)}
+                {t('Daily limit {amount}', { amount: formatAmount(s.dailyAllowance, cur) })}
               </Text>
             </View>
           </View>
         </>
       ) : summary.isError ? (
-        <ErrorRow message={t("Couldn’t load today’s limit.")} onRetry={() => void summary.refetch()} />
+        <ErrorRow message={t('Couldn’t load today’s limit.')} onRetry={() => void summary.refetch()} />
       ) : (
         <View style={{ height: 120, justifyContent: 'center' }}>
           <SlateLoading />
@@ -118,8 +130,12 @@ export default function Home() {
             <Banner
               tone="warn"
               icon="shieldAlert"
-              title={firstPending.type === 'transfer_to_savings' ? t('Move {amount} to Savings?', { amount: formatMoney(firstPending.amount ?? 0, cur) }) : t('Set a food budget?')}
-              subtitle={t("Waiting for your approval")}
+              title={
+                firstPending.type === 'transfer_to_savings'
+                  ? t('Move {amount} to Savings?', { amount: formatMoney(firstPending.amount ?? 0, cur) })
+                  : t('Set a food budget?')
+              }
+              subtitle={t('Waiting for your approval')}
               onPress={() => router.push({ pathname: '/action/[id]', params: { id: firstPending.id } })}
             />
           ) : null}
@@ -127,16 +143,16 @@ export default function Home() {
             <Banner
               tone="success"
               icon="wallet"
-              title={t("Add the money you have")}
-              subtitle={t("Your card, cash and savings start at zero. Tap to enter what you really have.")}
+              title={t('Add the money you have')}
+              subtitle={t('Your card, cash and savings start at zero. Tap to enter what you really have.')}
               onPress={() => router.push('/balances')}
             />
           ) : cashBelowZero ? (
             <Banner
               tone="warn"
               icon="cash"
-              title={t("Your cash is below zero")}
-              subtitle={t("You recorded more cash spending than you had. Tap to set what’s in your wallet.")}
+              title={t('Your cash is below zero')}
+              subtitle={t('You recorded more cash spending than you had. Tap to set what’s in your wallet.')}
               onPress={() => router.push({ pathname: '/money', params: { mode: 'set', account: 'cash' } })}
             />
           ) : null}
@@ -152,19 +168,28 @@ export default function Home() {
       {/* Where the money is. */}
       <View style={{ gap: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-          <SectionTitle title={t("Balances")} />
+          <SectionTitle title={t('Balances')} />
           <Text variant="callout" color="secondary" tabular numberOfLines={1} style={{ flexShrink: 1 }}>
             {accounts.data ? formatMoney(total, cur) : '…'}
           </Text>
         </View>
-        {accounts.isError ? <ErrorRow message={t("Couldn’t load your balances.")} onRetry={() => void accounts.refetch()} /> : null}
+        {accounts.isError ? <ErrorRow message={t('Couldn’t load your balances.')} onRetry={() => void accounts.refetch()} /> : null}
         {accounts.isLoading ? <SlateLoading /> : null}
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {(accounts.data ?? []).map((a) => {
             const tile = (
               <>
                 <View
-                  style={{ width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: c.separator, backgroundColor: c.bg, alignItems: 'center', justifyContent: 'center' }}
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 17,
+                    borderWidth: 1,
+                    borderColor: c.separator,
+                    backgroundColor: c.bg,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
                 >
                   <Icon name={accountIcon[a.type] ?? 'cash'} size={17} color={c.label} />
                 </View>
@@ -181,7 +206,12 @@ export default function Home() {
             return (
               <View key={a.id} style={{ flex: 1 }}>
                 {a.type === 'card' ? (
-                  <PressableScale onPress={() => router.push('/card')} accessibilityRole="button" accessibilityLabel={t('{name}, open FeMate card', { name: t(a.name) })} style={box}>
+                  <PressableScale
+                    onPress={() => router.push('/card')}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('{name}, open FeMate card', { name: t(a.name) })}
+                    style={box}
+                  >
                     {tile}
                   </PressableScale>
                 ) : (
@@ -195,7 +225,7 @@ export default function Home() {
 
       {categories.top.length ? (
         <View style={{ gap: 14 }}>
-          <SectionTitle title={t("This month")} action={t("Reports")} onAction={() => router.push('/reports')} />
+          <SectionTitle title={t('This month')} action={t('Reports')} onAction={() => router.push('/reports')} />
           <View style={{ backgroundColor: c.card, borderRadius: 24, padding: 18, gap: 14 }}>
             <View style={{ gap: 2 }}>
               <Text variant="footnote" color="secondary">
@@ -208,7 +238,15 @@ export default function Home() {
             {/* One segmented bar: each category's share, darkest first. */}
             <View style={{ flexDirection: 'row', gap: 4 }}>
               {categories.top.map((x, i) => (
-                <View key={x.category} style={{ flex: Math.max(0.06, x.amount / Math.max(1, categories.sum)), height: 8, borderRadius: 4, backgroundColor: c.categoryShades[i] ?? c.fill2 }} />
+                <View
+                  key={x.category}
+                  style={{
+                    flex: Math.max(0.06, x.amount / Math.max(1, categories.sum)),
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: c.categoryShades[i] ?? c.fill2,
+                  }}
+                />
               ))}
             </View>
             <View>
@@ -236,8 +274,8 @@ export default function Home() {
       ) : null}
 
       <View style={{ gap: 4 }}>
-        <SectionTitle title={t("Recent transactions")} action={t("See all")} onAction={() => router.push('/transactions')} />
-        {txs.isError ? <ErrorRow message={t("Couldn’t load transactions.")} onRetry={() => void txs.refetch()} /> : null}
+        <SectionTitle title={t('Recent transactions')} action={t('See all')} onAction={() => router.push('/transactions')} />
+        {txs.isError ? <ErrorRow message={t('Couldn’t load transactions.')} onRetry={() => void txs.refetch()} /> : null}
         {txs.data && txs.data.items.length === 0 ? (
           <Text variant="callout" color="secondary" style={{ paddingVertical: 12 }}>
             {t('Nothing yet. Tap Expense above to add your first one.')}
@@ -254,7 +292,12 @@ export default function Home() {
               last={i === list.length - 1}
               right={
                 <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                  <Text variant="callout" weight="600" tabular color={income ? c.positive : tx.category === 'transfer' ? c.secondary : c.label}>
+                  <Text
+                    variant="callout"
+                    weight="600"
+                    tabular
+                    color={income ? c.positive : tx.category === 'transfer' ? c.secondary : c.label}
+                  >
                     {tx.direction === 'in' ? '+' : tx.category === 'transfer' ? '' : '−'}
                     {formatAmount(tx.amount, cur)}
                   </Text>
