@@ -11,6 +11,7 @@ import { categoryLabel, formatAmount, formatMoney } from '@/lib/format';
 import { useAllTransactions } from '@/lib/queries';
 import { useTheme } from '@/theme';
 import { longDay, t, useT, type Lang } from '@/i18n';
+import { CountUp } from '@/components/motion';
 
 function dayTitle(d: Date, lang: Lang, now = new Date()) {
   const y = new Date(now);
@@ -50,7 +51,7 @@ export default function Transactions() {
   const shownOut = groups.reduce((n, g) => n + g.total, 0);
   return (
     <Screen
-      title={t("Transactions")}
+      title={t('Transactions')}
       refreshing={txs.isRefetching}
       onRefresh={() => void txs.refetch()}
       back
@@ -59,15 +60,22 @@ export default function Transactions() {
           <Text variant="footnote" color="rgba(255,255,255,0.56)" style={{ fontSize: 14 }}>
             {filter === 'all' ? t('Spent in this list') : t('Spent on: {category}', { category: categoryLabel[filter] })}
           </Text>
-          <Text variant="largeTitle" color="#FFFFFF" tabular style={{ fontSize: 40, lineHeight: 48, letterSpacing: -1 }} numberOfLines={1} adjustsFontSizeToFit>
-            {formatMoney(shownOut, cur)}
-          </Text>
+          <CountUp
+            variant="largeTitle"
+            color="#FFFFFF"
+            tabular
+            style={{ fontSize: 40, lineHeight: 48, letterSpacing: -1 }}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            value={shownOut}
+            format={(n) => formatMoney(n, cur)}
+          />
         </View>
       }
     >
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} style={{ marginHorizontal: -20 }}>
         <View style={{ width: 12 }} />
-        <Chip label={t("All")} selected={filter === 'all'} onPress={() => setFilter('all')} />
+        <Chip label={t('All')} selected={filter === 'all'} onPress={() => setFilter('all')} />
         {cats.map((cat) => (
           <Chip key={cat} label={categoryLabel[cat]} icon={categoryIcon[cat]} selected={filter === cat} onPress={() => setFilter(cat)} />
         ))}
@@ -75,7 +83,7 @@ export default function Transactions() {
       </ScrollView>
 
       {txs.isLoading ? <ActivityIndicator color={c.secondary} style={{ paddingVertical: 24 }} /> : null}
-      {txs.isError ? <ErrorRow message={t("Couldn’t load your transactions.")} onRetry={() => void txs.refetch()} /> : null}
+      {txs.isError ? <ErrorRow message={t('Couldn’t load your transactions.')} onRetry={() => void txs.refetch()} /> : null}
       {!txs.isLoading && groups.length === 0 && !txs.isError ? (
         <Text variant="callout" color="secondary" style={{ textAlign: 'center', paddingVertical: 24 }}>
           {t('Nothing here yet.')}
@@ -103,7 +111,12 @@ export default function Transactions() {
                 last={i === g.items.length - 1}
                 right={
                   <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                    <Text variant="callout" weight="600" tabular color={income ? c.positive : t.category === 'transfer' ? c.secondary : c.label}>
+                    <Text
+                      variant="callout"
+                      weight="600"
+                      tabular
+                      color={income ? c.positive : t.category === 'transfer' ? c.secondary : c.label}
+                    >
                       {t.direction === 'in' ? '+' : t.category === 'transfer' ? '' : '−'}
                       {formatAmount(t.amount, cur)}
                     </Text>

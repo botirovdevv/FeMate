@@ -7,8 +7,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/theme';
 import { Icon, type IconName } from './Icon';
+import { FadeIn, GrowBar, MotionScope, Stagger } from './motion';
 import { TAB_BAR_SPACE } from './PillTabBar';
-import { font, haptic, LoadingDots, PressableScale, Text } from './ui';
+import { font, haptic, LoadingDots, MorphSurface, PressableScale, splitButtonStyle, Text } from './ui';
 import { useT } from '@/i18n';
 
 export interface SlatePalette {
@@ -111,7 +112,7 @@ export function HeroHeader({ title, back, right, children }: { title: string; ba
         {right ? <View style={{ flexDirection: 'row', gap: 10 }}>{right}</View> : null}
       </View>
       <BrandMark style={{ marginTop: -12, marginLeft: back ? 56 : 0 }} />
-      {children}
+      {children ? <FadeIn from={10}>{children}</FadeIn> : null}
     </View>
   );
 }
@@ -134,19 +135,23 @@ export function SlatePage({
   const s = useSlate();
   const insets = useSafeAreaInsets();
   return (
-    <View style={{ flex: 1, backgroundColor: s.bg }}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="never"
-        keyboardShouldPersistTaps="handled"
-        // The hero is part of the scroll content so pull-to-refresh pulls it down with the page.
-        refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={s.muted} /> : undefined}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 32 + (tabs ? TAB_BAR_SPACE : 0) }}
-      >
-        {hero}
-        <View style={{ paddingHorizontal: 20, paddingTop: 24, gap: 28 }}>{children}</View>
-      </ScrollView>
-    </View>
+    <MotionScope replayOnFocus={tabs}>
+      <View style={{ flex: 1, backgroundColor: s.bg }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentInsetAdjustmentBehavior="never"
+          keyboardShouldPersistTaps="handled"
+          // The hero is part of the scroll content so pull-to-refresh pulls it down with the page.
+          refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={s.muted} /> : undefined}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 32 + (tabs ? TAB_BAR_SPACE : 0) }}
+        >
+          {hero}
+          <View style={{ paddingHorizontal: 20, paddingTop: 24, gap: 28 }}>
+            <Stagger start={120}>{children}</Stagger>
+          </View>
+        </ScrollView>
+      </View>
+    </MotionScope>
   );
 }
 
@@ -240,6 +245,7 @@ export function PillButton({
   const s = useSlate();
   const bg = variant === 'primary' ? s.primary : variant === 'danger' ? s.dangerTint : s.secondaryBg;
   const fg = variant === 'primary' ? s.onPrimary : variant === 'danger' ? s.danger : s.text;
+  const [surface, outer] = splitButtonStyle(style);
   return (
     <PressableScale
       onPress={() => {
@@ -249,29 +255,37 @@ export function PillButton({
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityState={{ disabled: !!disabled, busy: !!loading }}
-      style={[
-        {
-          height: 54,
-          borderRadius: 27,
-          backgroundColor: bg,
-          opacity: disabled ? 0.4 : 1,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-          paddingHorizontal: 20,
-        },
-        style,
-      ]}
+      style={[{ opacity: disabled ? 0.4 : 1 }, outer]}
     >
-      {loading ? (
-        <LoadingDots color={fg} />
-      ) : (
-        <>
-          {icon ? <Icon name={icon} size={18} color={fg} strokeWidth={2} /> : null}
-          <Text style={{ color: fg, fontSize: 16, fontWeight: '600' }}>{title}</Text>
-        </>
-      )}
+      <MorphSurface
+        loading={loading}
+        height={Number(surface.height ?? 54)}
+        style={[
+          {
+            height: 54,
+            borderRadius: 27,
+            backgroundColor: bg,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            paddingHorizontal: 20,
+            overflow: 'hidden',
+          },
+          surface,
+        ]}
+      >
+        {loading ? (
+          <LoadingDots color={fg} />
+        ) : (
+          <>
+            {icon ? <Icon name={icon} size={18} color={fg} strokeWidth={2} /> : null}
+            <Text style={{ color: fg, fontSize: 16, fontWeight: '600' }} numberOfLines={1}>
+              {title}
+            </Text>
+          </>
+        )}
+      </MorphSurface>
     </PressableScale>
   );
 }
@@ -279,12 +293,7 @@ export function PillButton({
 /** Thick progress bar: black fill (white on the hero). */
 export function SlateProgress({ value, onHero, height = 8 }: { value: number; onHero?: boolean; height?: number }) {
   const s = useSlate();
-  const pct = Math.max(0, Math.min(1, value));
-  return (
-    <View style={{ height, borderRadius: height / 2, backgroundColor: onHero ? s.heroTrack : s.secondaryBg, overflow: 'hidden' }}>
-      <View style={{ width: `${pct * 100}%`, height, borderRadius: height / 2, backgroundColor: onHero ? s.brand : s.primary }} />
-    </View>
-  );
+  return <GrowBar value={value} color={onHero ? s.brand : s.primary} track={onHero ? s.heroTrack : s.secondaryBg} height={height} />;
 }
 
 /** "Label → value" rows on a soft card (Confirm order style). The last row can be bold as a total. */
@@ -512,7 +521,7 @@ export function SheetBody({ title, note, children }: { title: string; note?: str
         </Text>
         {note ? <Text style={{ fontSize: 15, lineHeight: 21, color: s.muted }}>{note}</Text> : null}
       </View>
-      {children}
+      <Stagger start={80}>{children}</Stagger>
     </ScrollView>
   );
 }

@@ -1,9 +1,10 @@
 import type { Tabs } from 'expo-router';
-import type { ComponentProps } from 'react';
-import { Platform, Pressable, View } from 'react-native';
+import { useEffect, useState, type ComponentProps } from 'react';
+import { Animated, Platform, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useKeyboardHeight } from '@/lib/useKeyboardHeight';
+import { motionOff } from './motion';
 import { useTheme } from '@/theme';
 import { Icon, type IconName } from './Icon';
 import { haptic, Text } from './ui';
@@ -13,6 +14,9 @@ type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>
 /** Height of the floating pill, without the bottom inset. Screens leave this much room under their content. */
 export const PILL_TAB_BAR_HEIGHT = 64;
 const PILL_GAP = 10;
+const ITEM = 52;
+const GAP = 4;
+const PAD = 6;
 /** Room a screen needs above the safe-area inset so nothing hides under the pill. */
 export const TAB_BAR_SPACE = PILL_TAB_BAR_HEIGHT + PILL_GAP;
 
@@ -29,6 +33,13 @@ export function PillTabBar({ state, descriptors, navigation, icons }: TabBarProp
   // The active tab is the lime brand circle: a touch of colour on every tab screen.
   const active = '#C6F432';
   const idle = 'rgba(255,255,255,0.55)';
+  // The lime circle slides to the tapped tab with a soft spring (reference tab bar).
+  const x = useState(() => new Animated.Value(state.index * (ITEM + GAP)))[0];
+  useEffect(() => {
+    const to = state.index * (ITEM + GAP);
+    if (motionOff()) x.setValue(to);
+    else Animated.spring(x, { toValue: to, friction: 9, tension: 90, useNativeDriver: true }).start();
+  }, [state.index, x]);
   if (keyboard > 0) return null;
   return (
     <View
@@ -40,9 +51,9 @@ export function PillTabBar({ state, descriptors, navigation, icons }: TabBarProp
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 4,
+          gap: GAP,
           height: PILL_TAB_BAR_HEIGHT,
-          paddingHorizontal: 6,
+          paddingHorizontal: PAD,
           borderRadius: PILL_TAB_BAR_HEIGHT / 2,
           backgroundColor: bar,
           borderWidth: dark ? 1 : 0,
@@ -54,6 +65,10 @@ export function PillTabBar({ state, descriptors, navigation, icons }: TabBarProp
           elevation: 10,
         }}
       >
+        <Animated.View
+          pointerEvents="none"
+          style={{ position: 'absolute', left: PAD, top: (PILL_TAB_BAR_HEIGHT - ITEM) / 2, width: ITEM, height: ITEM, borderRadius: ITEM / 2, backgroundColor: active, transform: [{ translateX: x }] }}
+        />
         {state.routes.map((route, index) => {
           const focused = state.index === index;
           const options = descriptors[route.key]?.options ?? {};
@@ -76,10 +91,9 @@ export function PillTabBar({ state, descriptors, navigation, icons }: TabBarProp
               onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
               hitSlop={4}
               style={{
-                width: 52,
-                height: 52,
-                borderRadius: 26,
-                backgroundColor: focused ? active : 'transparent',
+                width: ITEM,
+                height: ITEM,
+                borderRadius: ITEM / 2,
                 alignItems: 'center',
                 justifyContent: 'center',
                 ...(Platform.OS === 'web' ? { cursor: 'pointer' as const } : null),

@@ -1,7 +1,7 @@
 import { fromUzs, type CardAuthorization, type CardDetails, type PaymentCard } from '@femate/shared';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { ActivityIndicator, Switch, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Animated, Easing, Switch, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { Icon, type IconName } from '@/components/Icon';
@@ -14,6 +14,8 @@ import { formatMoney, formatTime } from '@/lib/format';
 import { useAccounts, useCard, useCardAuthorizations, useFamily, useIssueCard, useSimulatePurchase, useUpdateCard } from '@/lib/queries';
 import { useTheme } from '@/theme';
 import { useT } from '@/i18n';
+import { EASE_OUT, motionOff, PopIn } from '@/components/motion';
+import { Snow } from '@/components/Snow';
 
 // Test purchases for the sandbox card: amounts in UZS, shown in the user's currency.
 const SHOPS: { merchant: string; uzs: number; mcc: string; icon: IconName }[] = [
@@ -34,7 +36,30 @@ const DECLINE_LABEL: Record<string, string> = {
 const groupPan = (pan: string) => pan.replace(/(\d{4})(?=\d)/g, '$1 ');
 
 /** Brushed-metal card face (reference design): silver, dark ink, contactless mark, VISA bottom right. */
+/**
+ * The card, flipping over (rotateY) when the number is shown or hidden, like the reference's Details.
+ */
 function CardFace({ card, details }: { card: PaymentCard; details: CardDetails | null }) {
+  const [face, setFace] = useState<CardDetails | null>(details);
+  const flip = useState(() => new Animated.Value(0))[0];
+  useEffect(() => {
+    if (details === face) return;
+    const d = motionOff() ? 0 : 200;
+    Animated.timing(flip, { toValue: 1, duration: d, easing: Easing.in(Easing.quad), useNativeDriver: true }).start(() => {
+      setFace(details);
+      Animated.timing(flip, { toValue: 0, duration: d, easing: EASE_OUT, useNativeDriver: true }).start();
+    });
+  }, [details, face, flip]);
+  return (
+    <Animated.View
+      style={{ transform: [{ perspective: 900 }, { rotateY: flip.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '90deg'] }) }] }}
+    >
+      <CardFaceBody card={card} details={face} />
+    </Animated.View>
+  );
+}
+
+function CardFaceBody({ card, details }: { card: PaymentCard; details: CardDetails | null }) {
   const { t } = useT();
   const ink = card.frozen ? '#5A5A5E' : '#1A1A1A';
   const soft = card.frozen ? '#76767A' : '#4A4A4C';
@@ -61,6 +86,7 @@ function CardFace({ card, details }: { card: PaymentCard; details: CardDetails |
         <Rect width="100%" height="100%" fill="url(#metal)" />
         <Rect width="100%" height="100%" fill="url(#sheen)" />
       </Svg>
+      {card.frozen ? <Snow height={w / 1.586} /> : null}
       <View style={{ flex: 1, padding: 22, justifyContent: 'space-between' }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Text variant="caption" color={soft} weight="600" style={{ letterSpacing: 2 }}>
@@ -69,12 +95,25 @@ function CardFace({ card, details }: { card: PaymentCard; details: CardDetails |
           <Icon name="wave" size={26} color={ink} strokeWidth={1.8} />
         </View>
         {card.frozen ? (
-          <View style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.72)' }}>
-            <Icon name="lock" size={14} color="#FFFFFF" strokeWidth={2.2} />
-            <Text variant="footnote" color="#FFFFFF" weight="600">
-              {t('Frozen')}
-            </Text>
-          </View>
+          <PopIn style={{ alignSelf: 'center' }}>
+            <View
+              style={{
+                alignSelf: 'center',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                paddingHorizontal: 14,
+                paddingVertical: 7,
+                borderRadius: 16,
+                backgroundColor: 'rgba(0,0,0,0.72)',
+              }}
+            >
+              <Icon name="lock" size={14} color="#FFFFFF" strokeWidth={2.2} />
+              <Text variant="footnote" color="#FFFFFF" weight="600">
+                {t('Frozen')}
+              </Text>
+            </View>
+          </PopIn>
         ) : (
           <Text selectable={!!details} variant="title2" color={ink} tabular style={{ letterSpacing: 2, fontSize: 20 }}>
             {details ? groupPan(details.pan) : `•••• •••• •••• ${card.lastFour}`}
@@ -160,7 +199,17 @@ function SettingRow({
 }) {
   const { c } = useTheme();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, borderBottomWidth: last ? 0 : 1, borderBottomColor: c.separator, opacity: disabled ? 0.45 : 1 }}>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        paddingVertical: 14,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: c.separator,
+        opacity: disabled ? 0.45 : 1,
+      }}
+    >
       <Icon name={icon} size={21} color={c.label} />
       <View style={{ flex: 1, gap: 2 }}>
         <Text variant="callout" weight="500">
@@ -240,7 +289,7 @@ export default function CardScreen() {
       refreshing={status.isRefetching || auths.isRefetching}
       onRefresh={() => void Promise.all([status.refetch(), auths.refetch()])}
       hero={
-        <HeroHeader title={t("Card")} back>
+        <HeroHeader title={t('Card')} back>
           {card ? (
             <>
               <CardFace card={card} details={details} />
@@ -259,11 +308,16 @@ export default function CardScreen() {
         </HeroHeader>
       }
     >
-      {status.isError ? <ErrorRow message={t("Couldn’t load your card.")} onRetry={() => void status.refetch()} /> : null}
+      {status.isError ? <ErrorRow message={t('Couldn’t load your card.')} onRetry={() => void status.refetch()} /> : null}
       {status.isLoading ? <SlateLoading /> : null}
 
       {status.data && !status.data.available ? (
-        <Banner tone="warn" icon="info" title={t("The card isn’t switched on yet")} subtitle={t("This server has no card provider set up. Try again later.")} />
+        <Banner
+          tone="warn"
+          icon="info"
+          title={t('The card isn’t switched on yet')}
+          subtitle={t('This server has no card provider set up. Try again later.')}
+        />
       ) : null}
 
       {status.data?.available && !card ? (
@@ -271,7 +325,9 @@ export default function CardScreen() {
           <View style={{ gap: 6 }}>
             <Text variant="title2">Get a virtual Visa card</Text>
             <Text variant="callout" color="body">
-              {t('Pay online with a FeMate card. It spends from your card account, and FeMate decides on every purchase the moment it happens.')}
+              {t(
+                'Pay online with a FeMate card. It spends from your card account, and FeMate decides on every purchase the moment it happens.',
+              )}
             </Text>
           </View>
           <View>
@@ -286,7 +342,7 @@ export default function CardScreen() {
             ))}
           </View>
           <PillButton
-            title={t("Get my FeMate card")}
+            title={t('Get my FeMate card')}
             icon="card"
             loading={issue.isPending}
             onPress={() => {
@@ -307,10 +363,28 @@ export default function CardScreen() {
       {card ? (
         <>
           <View style={{ flexDirection: 'row' }}>
-            <CircleAction icon="lock" label={card.frozen ? t('Unfreeze') : t('Freeze')} active={card.frozen} onPress={() => toggle({ frozen: !card.frozen })} />
-            <CircleAction icon={details ? 'eyeOff' : 'eye'} label={details ? t('Hide') : t('Details')} onPress={() => void reveal()} disabled={revealing} />
-            <CircleAction icon="plus" label={t("Top up")} onPress={() => router.push({ pathname: '/money', params: { mode: 'add', to: 'card' } })} />
-            <CircleAction icon={family ? 'family' : 'target'} label={family ? t('Family') : t('Budgets')} onPress={() => router.push(family ? '/family' : '/settings')} />
+            <CircleAction
+              icon="lock"
+              label={card.frozen ? t('Unfreeze') : t('Freeze')}
+              active={card.frozen}
+              onPress={() => toggle({ frozen: !card.frozen })}
+            />
+            <CircleAction
+              icon={details ? 'eyeOff' : 'eye'}
+              label={details ? t('Hide') : t('Details')}
+              onPress={() => void reveal()}
+              disabled={revealing}
+            />
+            <CircleAction
+              icon="plus"
+              label={t('Top up')}
+              onPress={() => router.push({ pathname: '/money', params: { mode: 'add', to: 'card' } })}
+            />
+            <CircleAction
+              icon={family ? 'family' : 'target'}
+              label={family ? t('Family') : t('Budgets')}
+              onPress={() => router.push(family ? '/family' : '/settings')}
+            />
           </View>
           {revealing ? <SlateLoading /> : null}
 
@@ -322,14 +396,14 @@ export default function CardScreen() {
           />
 
           <View>
-            <SectionTitle title={t("Card settings")} />
+            <SectionTitle title={t('Card settings')} />
             <Text variant="footnote" color="secondary" style={{ marginTop: 4, marginBottom: 4 }}>
               {card.frozen ? t('Unfreeze the card to change these.') : t('Frozen cards and low balances are always declined.')}
             </Text>
             <SettingRow
               icon="target"
-              title={t("Block over-budget purchases")}
-              subtitle={t("Decline what would take a category past its monthly budget")}
+              title={t('Block over-budget purchases')}
+              subtitle={t('Decline what would take a category past its monthly budget')}
               value={card.blockOverBudget}
               onChange={(v) => toggle({ blockOverBudget: v })}
               disabled={card.frozen}
@@ -338,7 +412,7 @@ export default function CardScreen() {
             {family || card.payFromFamily ? (
               <SettingRow
                 icon="family"
-                title={t("Pay from family budget")}
+                title={t('Pay from family budget')}
                 subtitle={
                   family
                     ? family.role === 'member'
@@ -360,7 +434,7 @@ export default function CardScreen() {
 
           {status.data?.sandbox ? (
             <View style={{ gap: 12 }}>
-              <SectionTitle title={t("Try a purchase")} />
+              <SectionTitle title={t('Try a purchase')} />
               <Text variant="footnote" color="secondary">
                 {t('Sandbox: a shop charges your card through the card network, and FeMate approves or declines it live.')}
               </Text>
@@ -371,8 +445,19 @@ export default function CardScreen() {
                       disabled={simulate.isPending}
                       onPress={() => buy(sh)}
                       accessibilityRole="button"
-                      accessibilityLabel={t('Pay {amount} at {merchant}', { amount: formatMoney(fromUzs(sh.uzs, cur), cur), merchant: sh.merchant })}
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 18, backgroundColor: c.card, opacity: simulate.isPending ? 0.6 : 1 }}
+                      accessibilityLabel={t('Pay {amount} at {merchant}', {
+                        amount: formatMoney(fromUzs(sh.uzs, cur), cur),
+                        merchant: sh.merchant,
+                      })}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: 14,
+                        borderRadius: 18,
+                        backgroundColor: c.card,
+                        opacity: simulate.isPending ? 0.6 : 1,
+                      }}
                     >
                       <Icon name={sh.icon} size={20} color={c.label} />
                       <View style={{ flex: 1 }}>
@@ -399,7 +484,9 @@ export default function CardScreen() {
                 <Banner
                   tone={last.approved ? 'success' : 'danger'}
                   icon={last.approved ? 'check' : 'ban'}
-                  title={last.approved ? `${t('Approved')} · ${formatMoney(last.amount, cur)}` : t(DECLINE_LABEL[last.result] ?? 'Declined')}
+                  title={
+                    last.approved ? `${t('Approved')} · ${formatMoney(last.amount, cur)}` : t(DECLINE_LABEL[last.result] ?? 'Declined')
+                  }
                   subtitle={last.reason}
                 />
               ) : null}
@@ -407,8 +494,8 @@ export default function CardScreen() {
           ) : null}
 
           <View style={{ gap: 4 }}>
-            <SectionTitle title={t("Card activity")} />
-            {auths.isError ? <ErrorRow message={t("Couldn’t load card activity.")} onRetry={() => void auths.refetch()} /> : null}
+            <SectionTitle title={t('Card activity')} />
+            {auths.isError ? <ErrorRow message={t('Couldn’t load card activity.')} onRetry={() => void auths.refetch()} /> : null}
             {auths.data?.length === 0 ? (
               <Text variant="callout" color="secondary" style={{ paddingVertical: 12 }}>
                 {t('No purchases yet. Approved and declined payments show up here.')}

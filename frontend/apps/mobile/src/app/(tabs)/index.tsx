@@ -24,6 +24,7 @@ import { periodRange } from '@/lib/period';
 import { useAccounts, useActions, useDailySummary, useInsight, useMe, usePeriodSummary, useTransactions } from '@/lib/queries';
 import { useTheme } from '@/theme';
 import { useT } from '@/i18n';
+import { CountUp, Stagger } from '@/components/motion';
 
 // Home answers three questions in this order: how much can I still spend today, what should I do about it,
 // and where is my money. Everything else is one tap away.
@@ -82,16 +83,16 @@ export default function Home() {
             <Text variant="footnote" color={over ? '#F5B65C' : sl.heroMuted} weight={over ? '600' : '400'} style={{ fontSize: 14 }}>
               {over ? t('Over today’s limit by') : t('You can still spend today')}
             </Text>
-            <Text
+            <CountUp
               variant="largeTitle"
               tabular
               color={over ? '#F5B65C' : sl.heroText}
               style={{ fontSize: 44, lineHeight: 52, letterSpacing: -1 }}
               numberOfLines={1}
               adjustsFontSizeToFit
-            >
-              {formatMoney(Math.abs(s.remainingToday), cur)}
-            </Text>
+              value={Math.abs(s.remainingToday)}
+              format={(n) => formatMoney(n, cur)}
+            />
           </View>
           <View style={{ gap: 10 }}>
             <SlateProgress value={spentRatio} onHero />
@@ -281,36 +282,38 @@ export default function Home() {
             {t('Nothing yet. Tap Expense above to add your first one.')}
           </Text>
         ) : null}
-        {(txs.data?.items ?? []).slice(0, 5).map((tx, i, list) => {
-          const income = tx.direction === 'in' && tx.category !== 'transfer';
-          return (
-            <SlateRow
-              key={tx.id}
-              icon={income ? 'plus' : categoryIcon[tx.category]}
-              title={tx.description}
-              subtitle={`${formatTime(tx.occurredAt)} · ${sourceLabel[tx.source]}${tx.familyId ? ` · ${t('Family')}` : ''}`}
-              last={i === list.length - 1}
-              right={
-                <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                  <Text
-                    variant="callout"
-                    weight="600"
-                    tabular
-                    color={income ? c.positive : tx.category === 'transfer' ? c.secondary : c.label}
-                  >
-                    {tx.direction === 'in' ? '+' : tx.category === 'transfer' ? '' : '−'}
-                    {formatAmount(tx.amount, cur)}
-                  </Text>
-                  {tx.original ? (
-                    <Text variant="footnote" color="secondary" tabular>
-                      {formatMoney(tx.original.amount, tx.original.currency)}
+        <Stagger start={200} step={50}>
+          {(txs.data?.items ?? []).slice(0, 5).map((tx, i, list) => {
+            const income = tx.direction === 'in' && tx.category !== 'transfer';
+            return (
+              <SlateRow
+                key={tx.id}
+                icon={income ? 'plus' : categoryIcon[tx.category]}
+                title={tx.description}
+                subtitle={`${formatTime(tx.occurredAt)} · ${sourceLabel[tx.source]}${tx.familyId ? ` · ${t('Family')}` : ''}`}
+                last={i === list.length - 1}
+                right={
+                  <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                    <Text
+                      variant="callout"
+                      weight="600"
+                      tabular
+                      color={income ? c.positive : tx.category === 'transfer' ? c.secondary : c.label}
+                    >
+                      {tx.direction === 'in' ? '+' : tx.category === 'transfer' ? '' : '−'}
+                      {formatAmount(tx.amount, cur)}
                     </Text>
-                  ) : null}
-                </View>
-              }
-            />
-          );
-        })}
+                    {tx.original ? (
+                      <Text variant="footnote" color="secondary" tabular>
+                        {formatMoney(tx.original.amount, tx.original.currency)}
+                      </Text>
+                    ) : null}
+                  </View>
+                }
+              />
+            );
+          })}
+        </Stagger>
       </View>
     </SlatePage>
   );

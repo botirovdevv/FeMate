@@ -41,7 +41,9 @@ export function Text({
   const resolved = color ? ((c as unknown as Record<string, string>)[color] ?? color) : c.label;
   const flat = StyleSheet.flatten([type[variant] as TextStyle, { color: resolved }, weight ? { fontWeight: weight } : null, style]);
   // An explicit fontFamily (e.g. monospace for log events) wins over the app font.
-  return <RNText {...rest} style={[flat, flat.fontFamily ? null : font(flat.fontWeight), tabular ? { fontVariant: ['tabular-nums'] } : null]} />;
+  return (
+    <RNText {...rest} style={[flat, flat.fontFamily ? null : font(flat.fontWeight), tabular ? { fontVariant: ['tabular-nums'] } : null]} />
+  );
 }
 
 /**
@@ -109,6 +111,52 @@ export function PressableScale({
   );
 }
 
+// Keys of a button style that belong to its coloured body; the rest (flex, margins, alignSelf) place it.
+const SURFACE_KEYS = new Set(['height', 'minHeight', 'borderRadius', 'backgroundColor', 'paddingHorizontal', 'borderWidth', 'borderColor']);
+
+export function splitButtonStyle(style: StyleProp<ViewStyle>): [ViewStyle, ViewStyle] {
+  const flat = StyleSheet.flatten(style) ?? {};
+  const surface: Record<string, unknown> = {};
+  const outer: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(flat)) (SURFACE_KEYS.has(k) ? surface : outer)[k] = v;
+  return [surface as ViewStyle, outer as ViewStyle];
+}
+
+/**
+ * The coloured body of a pill button. While loading it narrows into a small pill around the dots, the way the
+ * reference's Login and Order buttons do; it widens back when done.
+ */
+export function MorphSurface({
+  loading,
+  height,
+  style,
+  children,
+}: {
+  loading?: boolean;
+  height: number;
+  style: StyleProp<ViewStyle>;
+  children: ReactNode;
+}) {
+  const [w, setW] = useState(0);
+  const p = useState(() => new Animated.Value(loading ? 1 : 0))[0];
+  useEffect(() => {
+    Animated.timing(p, {
+      toValue: loading ? 1 : 0,
+      duration: 320,
+      easing: Easing.bezier(0.32, 0.72, 0, 1),
+      useNativeDriver: false,
+    }).start();
+  }, [loading, p]);
+  const inset = Math.max(0, (w - height * 1.9) / 2);
+  return (
+    <View onLayout={(e) => setW(e.nativeEvent.layout.width)} style={{ alignSelf: 'stretch' }}>
+      <Animated.View style={[style, { marginHorizontal: p.interpolate({ inputRange: [0, 1], outputRange: [0, inset] }) }]}>
+        {children}
+      </Animated.View>
+    </View>
+  );
+}
+
 export function Button({
   title,
   onPress,
@@ -141,44 +189,51 @@ export function Button({
   }[variant];
   const height = { large: 54, medium: 44, small: 36 }[size];
   const fontSize = { large: 16, medium: 15, small: 14 }[size];
+  const [surface, outer] = splitButtonStyle(style);
   return (
     <PressableScale
       onPress={onPress}
       disabled={disabled || loading}
       accessibilityRole="button"
       accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }}
-      style={[
-        {
-          height,
-          paddingHorizontal: { large: 20, medium: 16, small: 12 }[size],
-          borderRadius: height / 2,
-          backgroundColor: colors[0],
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-          opacity: disabled ? 0.4 : 1,
-        },
-        style,
-      ]}
+      style={[{ opacity: disabled ? 0.4 : 1 }, outer]}
     >
-      {loading ? (
-        <LoadingDots color={colors[1]!} />
-      ) : (
-        <>
-          {icon ? <Icon name={icon} size={fontSize + 2} color={colors[1]!} strokeWidth={2} /> : null}
-          {/* One line always: a narrow button shrinks its label a little instead of wrapping it. */}
-          <RNText
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.8}
-            style={[{ color: colors[1], fontSize, flexShrink: 1 }, font('600')]}
-          >
-            {title}
-          </RNText>
-          {iconRight ? <Icon name={iconRight} size={fontSize + 1} color={colors[1]!} strokeWidth={2} /> : null}
-        </>
-      )}
+      <MorphSurface
+        loading={loading}
+        height={Number(surface.height ?? height)}
+        style={[
+          {
+            height,
+            paddingHorizontal: { large: 20, medium: 16, small: 12 }[size],
+            borderRadius: height / 2,
+            backgroundColor: colors[0],
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            overflow: 'hidden',
+          },
+          surface,
+        ]}
+      >
+        {loading ? (
+          <LoadingDots color={colors[1]!} />
+        ) : (
+          <>
+            {icon ? <Icon name={icon} size={fontSize + 2} color={colors[1]!} strokeWidth={2} /> : null}
+            {/* One line always: a narrow button shrinks its label a little instead of wrapping it. */}
+            <RNText
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+              style={[{ color: colors[1], fontSize, flexShrink: 1 }, font('600')]}
+            >
+              {title}
+            </RNText>
+            {iconRight ? <Icon name={iconRight} size={fontSize + 1} color={colors[1]!} strokeWidth={2} /> : null}
+          </>
+        )}
+      </MorphSurface>
     </PressableScale>
   );
 }
@@ -204,7 +259,9 @@ export function IconTile({
 }) {
   return (
     // Always round, like the reference design; `rounded` is kept in the props for older call sites.
-    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
+    <View
+      style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}
+    >
       <Icon name={name} size={iconSize ?? Math.round(size * 0.5)} color={fg} />
     </View>
   );
@@ -330,10 +387,7 @@ export function Segmented<T extends string>({
 }) {
   const { c } = useTheme();
   return (
-    <View
-      accessibilityRole="tablist"
-      style={{ flexDirection: 'row', padding: 4, borderRadius: 24, backgroundColor: c.fill }}
-    >
+    <View accessibilityRole="tablist" style={{ flexDirection: 'row', padding: 4, borderRadius: 24, backgroundColor: c.fill }}>
       {options.map((o) => {
         const on = o.value === value;
         return (
@@ -378,7 +432,14 @@ export function ErrorRow({ message, onRetry }: { message?: string; onRetry: () =
       <Text variant="footnote" color={c.dangerInk} style={{ flex: 1 }}>
         {message ?? t('Couldn’t load this.')}
       </Text>
-      <Button title={t("Try again")} icon="refresh" size="small" variant="secondary" onPress={onRetry} style={{ backgroundColor: c.card }} />
+      <Button
+        title={t('Try again')}
+        icon="refresh"
+        size="small"
+        variant="secondary"
+        onPress={onRetry}
+        style={{ backgroundColor: c.card }}
+      />
     </View>
   );
 }

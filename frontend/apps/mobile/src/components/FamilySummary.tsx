@@ -7,6 +7,7 @@ import { Icon } from './Icon';
 import { SlateProgress, useSlate } from './slate';
 import { PressableScale, Text } from './ui';
 import { useT } from '@/i18n';
+import { CountUp } from '@/components/motion';
 
 /** Compact family budget on Today (Slate hero style). Hidden when the user has no family. */
 export function FamilySummary() {
@@ -43,13 +44,13 @@ export function FamilySummary() {
       </View>
       {/* Amount on its own line, the budget under it: long numbers and translations never run off the card. */}
       <View style={{ gap: 2 }}>
-        <Text
+        <CountUp
           style={{ fontSize: 28, fontWeight: '600', color: s.heroText, letterSpacing: -0.6, fontVariant: ['tabular-nums'] }}
           numberOfLines={1}
           adjustsFontSizeToFit
-        >
-          {formatMoney(o.budget.remaining, cur)}
-        </Text>
+          value={o.budget.remaining}
+          format={(n) => formatMoney(n, cur)}
+        />
         <Text style={{ fontSize: 13, color: s.heroMuted }} numberOfLines={1}>
           {t('left of {amount}', { amount: formatMoney(o.budget.limit, cur) })}
         </Text>

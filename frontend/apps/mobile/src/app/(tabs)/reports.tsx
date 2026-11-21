@@ -24,6 +24,7 @@ import {
 import { useDailySummary, usePeriodSummary, useSimulate } from '@/lib/queries';
 import { useTheme } from '@/theme';
 import { useT } from '@/i18n';
+import { CountUp } from '@/components/motion';
 
 const CHART_H = 156;
 
@@ -145,17 +146,28 @@ export default function Reports() {
   return (
     <Screen
       tabs
-      title={t("Reports")}
+      title={t('Reports')}
       refreshing={summary.isRefetching}
       onRefresh={() => void summary.refetch()}
       hero={
         <View style={{ gap: 2 }}>
           <Text variant="footnote" color="rgba(255,255,255,0.56)" style={{ fontSize: 14 }}>
-            {offset === 0 ? (period === 'week' ? t('Spent this week') : t('Spent this month so far')) : t('Spent: {period}', { period: offsetLabel(period, offset) })}
+            {offset === 0
+              ? period === 'week'
+                ? t('Spent this week')
+                : t('Spent this month so far')
+              : t('Spent: {period}', { period: offsetLabel(period, offset) })}
           </Text>
-          <Text variant="largeTitle" color="#FFFFFF" tabular style={{ fontSize: 44, lineHeight: 52, letterSpacing: -1 }} numberOfLines={1} adjustsFontSizeToFit>
-            {formatMoney(total, cur)}
-          </Text>
+          <CountUp
+            variant="largeTitle"
+            color="#FFFFFF"
+            tabular
+            style={{ fontSize: 44, lineHeight: 52, letterSpacing: -1 }}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            value={total}
+            format={(n) => formatMoney(n, cur)}
+          />
           <Text variant="footnote" color="rgba(255,255,255,0.56)" tabular>
             {rangeLabel(period, range)}
           </Text>
@@ -185,7 +197,11 @@ export default function Reports() {
             {offsetLabel(period, offset)}
           </Text>
         </View>
-        {offset > 0 ? <NavButton icon="chevronRight" label={period === 'week' ? t('Next week') : t('Next month')} onPress={() => step(-1)} /> : <View style={{ width: 40 }} />}
+        {offset > 0 ? (
+          <NavButton icon="chevronRight" label={period === 'week' ? t('Next week') : t('Next month')} onPress={() => step(-1)} />
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
       </View>
 
       <Card style={{ gap: 16 }}>
@@ -335,7 +351,9 @@ export default function Reports() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <View style={{ width: 14, borderTopWidth: 1.5, borderStyle: 'dashed', borderColor: c.secondary }} />
             <Text variant="caption" color="secondary" tabular>
-              {period === 'week' ? t('Daily limit {amount}', { amount: formatAmount(limit, cur) }) : t('Weekly limit {amount}', { amount: formatAmount(limit, cur) })}
+              {period === 'week'
+                ? t('Daily limit {amount}', { amount: formatAmount(limit, cur) })
+                : t('Weekly limit {amount}', { amount: formatAmount(limit, cur) })}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -361,7 +379,7 @@ export default function Reports() {
         </View>
       </Card>
 
-      {summary.isError ? <ErrorRow message={t("Couldn’t load your spending.")} onRetry={() => void summary.refetch()} /> : null}
+      {summary.isError ? <ErrorRow message={t('Couldn’t load your spending.')} onRetry={() => void summary.refetch()} /> : null}
 
       {top.length ? (
         <Card style={{ gap: 12 }}>
@@ -406,7 +424,7 @@ export default function Reports() {
         </View>
         <WhatIfRow
           icon="transport"
-          label={t("Taxi per day")}
+          label={t('Taxi per day')}
           display={formatMoney(inCur(taxi), cur)}
           value={taxi}
           min={5_000}
@@ -417,7 +435,7 @@ export default function Reports() {
         />
         <WhatIfRow
           icon="bus"
-          label={t("Bus instead, per day")}
+          label={t('Bus instead, per day')}
           display={formatMoney(inCur(alt), cur)}
           value={alt}
           min={0}
@@ -428,7 +446,7 @@ export default function Reports() {
         />
         <WhatIfRow
           icon="calendar"
-          label={t("Days per month")}
+          label={t('Days per month')}
           display={String(days)}
           value={days}
           min={1}
@@ -456,7 +474,7 @@ export default function Reports() {
           </View>
         </View>
         <Button
-          title={t("Make this a plan")}
+          title={t('Make this a plan')}
           icon="target"
           size="medium"
           onPress={() =>

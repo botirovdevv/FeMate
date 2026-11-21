@@ -21,8 +21,16 @@ import { haptic, PressableScale, Text } from '@/components/ui';
 import { categoryIcon } from '@/lib/categories';
 import { errorMessage } from '@/lib/api';
 import { formatMoney, formatTime } from '@/lib/format';
-import { useApproveFamilyRequest, useDeleteFamily, useFamily, useLeaveFamily, useRejectFamilyRequest, useRemoveFamilyMember } from '@/lib/queries';
+import {
+  useApproveFamilyRequest,
+  useDeleteFamily,
+  useFamily,
+  useLeaveFamily,
+  useRejectFamilyRequest,
+  useRemoveFamilyMember,
+} from '@/lib/queries';
 import { msg, t as tGlobal, useT } from '@/i18n';
+import { CountUp } from '@/components/motion';
 
 // Long form for the row subtitle, short for the right-hand status.
 const STATUS: Record<FamilyRequest['status'], string> = {
@@ -62,23 +70,19 @@ export default function FamilyScreen() {
   const s = useSlate();
 
   if (family.isPending) {
-    return <SlatePage hero={<HeroHeader title={t("Family")} back />}>{<SlateLoading />}</SlatePage>;
+    return <SlatePage hero={<HeroHeader title={t('Family')} back />}>{<SlateLoading />}</SlatePage>;
   }
   if (family.isError) {
     return (
-      <SlatePage hero={<HeroHeader title={t("Family")} back />} refreshing={family.isRefetching} onRefresh={() => void family.refetch()}>
+      <SlatePage hero={<HeroHeader title={t('Family')} back />} refreshing={family.isRefetching} onRefresh={() => void family.refetch()}>
         <Notice text={errorMessage(family.error)} />
-        <PillButton title={t("Try again")} variant="secondary" onPress={() => void family.refetch()} />
+        <PillButton title={t('Try again')} variant="secondary" onPress={() => void family.refetch()} />
       </SlatePage>
     );
   }
   if (!family.data) return <NoFamily />;
   return (
-    <SlatePage
-      hero={<FamilyHero o={family.data} />}
-      refreshing={family.isRefetching}
-      onRefresh={() => void family.refetch()}
-    >
+    <SlatePage hero={<FamilyHero o={family.data} />} refreshing={family.isRefetching} onRefresh={() => void family.refetch()}>
       {family.data.role === 'manager' ? <ManagerView o={family.data} /> : <MemberView o={family.data} />}
       <Text style={{ fontSize: 12, lineHeight: 17, color: s.muted, textAlign: 'center' }}>
         {t('Only spends marked “From family budget” count here. Everyone’s personal budget stays their own.')}
@@ -93,7 +97,7 @@ function NoFamily() {
   return (
     <SlatePage
       hero={
-        <HeroHeader title={t("Family")} back>
+        <HeroHeader title={t('Family')} back>
           <View style={{ gap: 6 }}>
             <Text style={{ fontSize: 15, color: s.heroMuted }}>{t('One budget for the whole family')}</Text>
             <Text style={{ fontSize: 26, lineHeight: 32, fontWeight: '600', color: s.heroText, letterSpacing: -0.4 }}>
@@ -104,14 +108,27 @@ function NoFamily() {
       }
     >
       <View style={{ gap: 4 }}>
-        <SlateRow icon="target" title={t("A shared monthly budget")} subtitle={t("The parent who creates the family sets it. Spends past it are blocked.")} />
-        <SlateRow icon="shieldCheck" title={t("Approval for big spends")} subtitle={t("Anything over your approval limit waits for your OK.")} />
-        <SlateRow icon="family" title={t("Join with a code")} subtitle={t("Each family member uses their own FeMate account.")} />
-        <SlateRow icon="eye" title={t("Private by default")} last subtitle={t("Members see the family totals. Only the manager sees who spent what.")} />
+        <SlateRow
+          icon="target"
+          title={t('A shared monthly budget')}
+          subtitle={t('The parent who creates the family sets it. Spends past it are blocked.')}
+        />
+        <SlateRow
+          icon="shieldCheck"
+          title={t('Approval for big spends')}
+          subtitle={t('Anything over your approval limit waits for your OK.')}
+        />
+        <SlateRow icon="family" title={t('Join with a code')} subtitle={t('Each family member uses their own FeMate account.')} />
+        <SlateRow
+          icon="eye"
+          title={t('Private by default')}
+          last
+          subtitle={t('Members see the family totals. Only the manager sees who spent what.')}
+        />
       </View>
       <View style={{ gap: 12 }}>
-        <PillButton title={t("Create a family")} icon="plus" onPress={() => router.push('/family/create')} />
-        <PillButton title={t("Join with a code")} icon="key" variant="secondary" onPress={() => router.push('/family/join')} />
+        <PillButton title={t('Create a family')} icon="plus" onPress={() => router.push('/family/create')} />
+        <PillButton title={t('Join with a code')} icon="key" variant="secondary" onPress={() => router.push('/family/join')} />
       </View>
     </SlatePage>
   );
@@ -127,17 +144,21 @@ function FamilyHero({ o }: { o: FamilyOverview }) {
     <HeroHeader
       title={o.family.name}
       back
-      right={o.role === 'manager' ? <HeroButton icon="plus" label={t("Invite a family member")} onPress={() => router.push('/family/invite')} /> : undefined}
+      right={
+        o.role === 'manager' ? (
+          <HeroButton icon="plus" label={t('Invite a family member')} onPress={() => router.push('/family/invite')} />
+        ) : undefined
+      }
     >
       <View style={{ gap: 4 }}>
         <Text style={{ fontSize: 14, color: s.heroMuted }}>{out ? t('Family budget used up') : t('Left this month')}</Text>
-        <Text
+        <CountUp
           style={{ fontSize: 44, lineHeight: 52, fontWeight: '600', color: s.heroText, letterSpacing: -1, fontVariant: ['tabular-nums'] }}
           numberOfLines={1}
           adjustsFontSizeToFit
-        >
-          {formatMoney(o.budget.remaining, cur)}
-        </Text>
+          value={o.budget.remaining}
+          format={(n) => formatMoney(n, cur)}
+        />
       </View>
       <View style={{ gap: 10 }}>
         <SlateProgress value={used} onHero />
@@ -156,7 +177,17 @@ function FamilyHero({ o }: { o: FamilyOverview }) {
   );
 }
 
-function RequestRow({ r, cur, manager, last }: { r: FamilyRequest; cur: FamilyOverview['family']['currency']; manager: boolean; last?: boolean }) {
+function RequestRow({
+  r,
+  cur,
+  manager,
+  last,
+}: {
+  r: FamilyRequest;
+  cur: FamilyOverview['family']['currency'];
+  manager: boolean;
+  last?: boolean;
+}) {
   const { t } = useT();
   const s = useSlate();
   const approve = useApproveFamilyRequest();
@@ -185,7 +216,9 @@ function RequestRow({ r, cur, manager, last }: { r: FamilyRequest; cur: FamilyOv
         last
         right={
           <View style={{ alignItems: 'flex-end', gap: 2 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: s.text, fontVariant: ['tabular-nums'] }}>{formatMoney(r.amount, cur)}</Text>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: s.text, fontVariant: ['tabular-nums'] }}>
+              {formatMoney(r.amount, cur)}
+            </Text>
             {!pendingForMe ? (
               <Text
                 style={{
@@ -203,8 +236,22 @@ function RequestRow({ r, cur, manager, last }: { r: FamilyRequest; cur: FamilyOv
         <View style={{ gap: 10 }}>
           {error ? <Notice text={error} /> : null}
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <PillButton title={t("Decline")} variant="secondary" onPress={() => void decide(false)} disabled={busy} loading={reject.isPending} style={{ flex: 1, height: 46 }} />
-            <PillButton title={t("Approve")} icon="check" onPress={() => void decide(true)} disabled={busy} loading={approve.isPending} style={{ flex: 1, height: 46 }} />
+            <PillButton
+              title={t('Decline')}
+              variant="secondary"
+              onPress={() => void decide(false)}
+              disabled={busy}
+              loading={reject.isPending}
+              style={{ flex: 1, height: 46 }}
+            />
+            <PillButton
+              title={t('Approve')}
+              icon="check"
+              onPress={() => void decide(true)}
+              disabled={busy}
+              loading={approve.isPending}
+              style={{ flex: 1, height: 46 }}
+            />
           </View>
         </View>
       ) : null}
@@ -235,10 +282,18 @@ function ManagerView({ o }: { o: FamilyOverview }) {
   return (
     <>
       <View style={{ flexDirection: 'row' }}>
-        <CircleAction icon="key" label={t("Invite")} onPress={() => router.push('/family/invite')} />
-        <CircleAction icon="sliders" label={t("Budget")} onPress={() => router.push({ pathname: '/family/budget', params: { field: 'budget' } })} />
-        <CircleAction icon="shieldCheck" label={t("Approval")} onPress={() => router.push({ pathname: '/family/budget', params: { field: 'threshold' } })} />
-        <CircleAction icon="card" label={t("Card")} onPress={() => router.push('/card')} />
+        <CircleAction icon="key" label={t('Invite')} onPress={() => router.push('/family/invite')} />
+        <CircleAction
+          icon="sliders"
+          label={t('Budget')}
+          onPress={() => router.push({ pathname: '/family/budget', params: { field: 'budget' } })}
+        />
+        <CircleAction
+          icon="shieldCheck"
+          label={t('Approval')}
+          onPress={() => router.push({ pathname: '/family/budget', params: { field: 'threshold' } })}
+        />
+        <CircleAction icon="card" label={t('Card')} onPress={() => router.push('/card')} />
       </View>
 
       {error ? <Notice text={error} /> : null}
@@ -255,13 +310,19 @@ function ManagerView({ o }: { o: FamilyOverview }) {
       <StatRows
         rows={[
           { label: t('Monthly budget'), value: formatMoney(o.family.monthlyBudget, cur) },
-          { label: t('Needs your approval'), value: o.family.approvalThreshold > 0 ? t('over {amount}', { amount: formatMoney(o.family.approvalThreshold, cur) }) : t('every spend') },
+          {
+            label: t('Needs your approval'),
+            value:
+              o.family.approvalThreshold > 0
+                ? t('over {amount}', { amount: formatMoney(o.family.approvalThreshold, cur) })
+                : t('every spend'),
+          },
           { label: t('Spent this month'), value: formatMoney(o.budget.spent, cur), strong: true },
         ]}
       />
 
       <View style={{ gap: 4 }}>
-        <SectionTitle title={t("Who spent what")} />
+        <SectionTitle title={t('Who spent what')} />
         {members.map((m, i) => {
           const share = o.budget.spent > 0 ? Math.round((m.spent / o.budget.spent) * 100) : 0;
           return (
@@ -273,15 +334,20 @@ function ManagerView({ o }: { o: FamilyOverview }) {
               last={i === members.length - 1}
               right={
                 <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '600', color: s.text, fontVariant: ['tabular-nums'] }}>{formatMoney(m.spent, cur)}</Text>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: s.text, fontVariant: ['tabular-nums'] }}>
+                    {formatMoney(m.spent, cur)}
+                  </Text>
                   <Text style={{ fontSize: 12, color: s.muted }}>{share}%</Text>
                 </View>
               }
               onPress={
                 m.role === 'member'
                   ? () =>
-                      confirm(t('Remove {name}?', { name: m.name }), t('{name} will leave the family. Their spending so far stays in the history.', { name: m.name }), t('Remove'), () =>
-                        void run(() => remove.mutateAsync(m.userId)),
+                      confirm(
+                        t('Remove {name}?', { name: m.name }),
+                        t('{name} will leave the family. Their spending so far stays in the history.', { name: m.name }),
+                        t('Remove'),
+                        () => void run(() => remove.mutateAsync(m.userId)),
                       )
                   : undefined
               }
@@ -297,7 +363,7 @@ function ManagerView({ o }: { o: FamilyOverview }) {
 
       {history.length ? (
         <View style={{ gap: 4 }}>
-          <SectionTitle title={t("Recent requests")} />
+          <SectionTitle title={t('Recent requests')} />
           {history.map((r, i) => (
             <RequestRow key={r.id} r={r} cur={cur} manager last={i === history.length - 1} />
           ))}
@@ -305,16 +371,20 @@ function ManagerView({ o }: { o: FamilyOverview }) {
       ) : null}
 
       <PillButton
-        title={t("Delete family")}
+        title={t('Delete family')}
         variant="danger"
         icon="ban"
         loading={del.isPending}
         onPress={() =>
-          confirm(t('Delete the family?'), t('Everyone leaves and the shared budget ends. Spending history stays.'), t('Delete'), () =>
-            void run(async () => {
-              await del.mutateAsync();
-              router.back();
-            }),
+          confirm(
+            t('Delete the family?'),
+            t('Everyone leaves and the shared budget ends. Spending history stays.'),
+            t('Delete'),
+            () =>
+              void run(async () => {
+                await del.mutateAsync();
+                router.back();
+              }),
           )
         }
       />
@@ -331,23 +401,27 @@ function MemberView({ o }: { o: FamilyOverview }) {
   return (
     <>
       <View style={{ flexDirection: 'row' }}>
-        <CircleAction icon="plus" label={t("Add spend")} onPress={() => router.push('/(tabs)/add')} />
-        <CircleAction icon="hand" label={t("Ask")} onPress={() => router.push('/family/request')} />
-        <CircleAction icon="card" label={t("Card")} onPress={() => router.push('/card')} />
+        <CircleAction icon="plus" label={t('Add spend')} onPress={() => router.push('/(tabs)/add')} />
+        <CircleAction icon="hand" label={t('Ask')} onPress={() => router.push('/family/request')} />
+        <CircleAction icon="card" label={t('Card')} onPress={() => router.push('/card')} />
         <CircleAction
           icon="logout"
-          label={t("Leave")}
+          label={t('Leave')}
           onPress={() =>
-            confirm(t('Leave the family?'), t('You’ll stop sharing {family}’s budget. Your own budget stays.', { family: o.family.name }), t('Leave'), () =>
-              void (async () => {
-                setError(null);
-                try {
-                  await leave.mutateAsync();
-                  router.back();
-                } catch (e) {
-                  setError(errorMessage(e));
-                }
-              })(),
+            confirm(
+              t('Leave the family?'),
+              t('You’ll stop sharing {family}’s budget. Your own budget stays.', { family: o.family.name }),
+              t('Leave'),
+              () =>
+                void (async () => {
+                  setError(null);
+                  try {
+                    await leave.mutateAsync();
+                    router.back();
+                  } catch (e) {
+                    setError(errorMessage(e));
+                  }
+                })(),
             )
           }
         />
@@ -360,21 +434,27 @@ function MemberView({ o }: { o: FamilyOverview }) {
           { label: t('Monthly budget'), value: formatMoney(o.family.monthlyBudget, cur) },
           {
             label: t('{name} approves', { name: o.family.managerName }),
-            value: o.family.approvalThreshold > 0 ? t('over {amount}', { amount: formatMoney(o.family.approvalThreshold, cur) }) : t('every spend'),
+            value:
+              o.family.approvalThreshold > 0
+                ? t('over {amount}', { amount: formatMoney(o.family.approvalThreshold, cur) })
+                : t('every spend'),
           },
           { label: t('Left this month'), value: formatMoney(o.budget.remaining, cur), strong: true },
         ]}
       />
 
       <View style={{ gap: 4 }}>
-        <SectionTitle title={t("Your requests")} />
+        <SectionTitle title={t('Your requests')} />
         {mine.length ? (
           mine.map((r, i) => <RequestRow key={r.id} r={r} cur={cur} manager={false} last={i === mine.length - 1} />)
         ) : (
           <SlateRow
             icon="shieldCheck"
-            title={t("Nothing waiting")}
-            subtitle={t('A family spend over {amount} goes to {name} first.', { amount: formatMoney(o.family.approvalThreshold, cur), name: o.family.managerName })}
+            title={t('Nothing waiting')}
+            subtitle={t('A family spend over {amount} goes to {name} first.', {
+              amount: formatMoney(o.family.approvalThreshold, cur),
+              name: o.family.managerName,
+            })}
             last
           />
         )}

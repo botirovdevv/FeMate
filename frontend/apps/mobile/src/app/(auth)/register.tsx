@@ -12,8 +12,11 @@ import { isAcceptablePassword, passwordStrength, type PasswordLevel } from '@/li
 import { useSession } from '@/store/session';
 import { useTheme } from '@/theme';
 import { useT } from '@/i18n';
+import { useCurtain } from '@/components/Curtain';
+import { FadeIn, Stagger } from '@/components/motion';
 
 export default function Register() {
+  const { run: closeCurtain, curtain } = useCurtain();
   const { t } = useT();
   const { c } = useTheme();
   const typing = useKeyboardHeight() > 0;
@@ -53,7 +56,7 @@ export default function Register() {
       const res = await api.register({ name: name.trim(), email: email.trim(), password });
       await signIn(res.token);
       haptic('success');
-      router.replace('/appearance');
+      closeCurtain(() => router.replace('/appearance'));
     } catch (e) {
       haptic('warning');
       setError(errorMessage(e));
@@ -63,64 +66,73 @@ export default function Register() {
   };
 
   return (
-    <KeyboardScreen style={{ backgroundColor: c.bg }} bounces={false}>
-      <AuthHero compact={typing} subtitle={t("Two minutes to set up. You stay in control of every transfer.")} />
-      <View style={{ flex: 1, paddingHorizontal: 28, paddingTop: typing ? 20 : 12, paddingBottom: insets.bottom + 20, gap: 18 }}>
-        <Text variant="title" accessibilityRole="header">
-          {t('Create account')}
-        </Text>
-        <AuthField
-          label={t("Name")}
-          value={name}
-          onChangeText={setName}
-          placeholder={t("Your name")}
-          autoComplete="name"
-          returnKeyType="next"
-          onSubmitEditing={() => emailRef.current?.focus()}
-        />
-        <AuthField
-          ref={emailRef}
-          label={t("Email")}
-          value={email}
-          onChangeText={setEmail}
-          placeholder={t("Enter your email")}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoComplete="email"
-          returnKeyType="next"
-          onSubmitEditing={() => passRef.current?.focus()}
-        />
-        <AuthField
-          ref={passRef}
-          label={t("Password")}
-          secure
-          value={password}
-          onChangeText={setPassword}
-          placeholder={t("8+ characters")}
-          autoComplete="new-password"
-          returnKeyType="go"
-          onSubmitEditing={submit}
-        />
-        {strength.level !== 'empty' ? <StrengthMeter level={strength.level} hint={strength.hint} /> : null}
-        {error ? (
-          <Text variant="footnote" color="danger" accessibilityLiveRegion="polite">
-            {error}
-          </Text>
-        ) : null}
-        <Button title={t("Continue")} onPress={submit} loading={busy} disabled={!passwordOk} />
-        <View style={{ flex: 1, minHeight: 12 }} />
-        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
-          <Text variant="callout" color="secondary">
-            {t('Already have an account?')}
-          </Text>
-          <Pressable accessibilityRole="link" onPress={() => router.back()} style={{ minHeight: 44, justifyContent: 'center' }}>
-            <Text variant="callout" weight="700">
-              {t('Sign in')}
+    <View style={{ flex: 1 }}>
+      <KeyboardScreen style={{ backgroundColor: c.bg }} bounces={false}>
+        <AuthHero compact={typing} subtitle={t('Two minutes to set up. You stay in control of every transfer.')} />
+        <FadeIn
+          from={80}
+          duration={640}
+          style={{ flex: 1, paddingHorizontal: 28, paddingTop: typing ? 20 : 12, paddingBottom: insets.bottom + 20, gap: 18 }}
+        >
+          <Stagger start={160} step={50}>
+            <Text variant="title" accessibilityRole="header">
+              {t('Create account')}
             </Text>
-          </Pressable>
-        </View>
-      </View>
-    </KeyboardScreen>
+            <AuthField
+              label={t('Name')}
+              value={name}
+              onChangeText={setName}
+              placeholder={t('Your name')}
+              autoComplete="name"
+              returnKeyType="next"
+              onSubmitEditing={() => emailRef.current?.focus()}
+            />
+            <AuthField
+              ref={emailRef}
+              label={t('Email')}
+              value={email}
+              onChangeText={setEmail}
+              placeholder={t('Enter your email')}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoComplete="email"
+              returnKeyType="next"
+              onSubmitEditing={() => passRef.current?.focus()}
+            />
+            <AuthField
+              ref={passRef}
+              label={t('Password')}
+              secure
+              value={password}
+              onChangeText={setPassword}
+              placeholder={t('8+ characters')}
+              autoComplete="new-password"
+              returnKeyType="go"
+              onSubmitEditing={submit}
+            />
+            {strength.level !== 'empty' ? <StrengthMeter level={strength.level} hint={strength.hint} /> : null}
+            {error ? (
+              <Text variant="footnote" color="danger" accessibilityLiveRegion="polite">
+                {error}
+              </Text>
+            ) : null}
+            <Button title={t('Continue')} onPress={submit} loading={busy} disabled={!passwordOk} />
+            <View style={{ flex: 1, minHeight: 12 }} />
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
+              <Text variant="callout" color="secondary">
+                {t('Already have an account?')}
+              </Text>
+              <Pressable accessibilityRole="link" onPress={() => router.back()} style={{ minHeight: 44, justifyContent: 'center' }}>
+                <Text variant="callout" weight="700">
+                  {t('Sign in')}
+                </Text>
+              </Pressable>
+            </View>
+          </Stagger>
+        </FadeIn>
+      </KeyboardScreen>
+      {curtain}
+    </View>
   );
 }
 

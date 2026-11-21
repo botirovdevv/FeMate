@@ -17,6 +17,7 @@ import { useSession } from '@/store/session';
 import { useSettings, type Appearance } from '@/store/settings';
 import { useTheme } from '@/theme';
 import { LANGS, useT } from '@/i18n';
+import { PopIn } from '@/components/motion';
 
 const BOT_URL = 'https://t.me/femate_uz_bot';
 
@@ -135,16 +136,38 @@ export default function Settings() {
   return (
     <SlatePage
       hero={
-        <HeroHeader title={t("Profile")} back>
+        <HeroHeader title={t('Profile')} back>
           <View style={{ alignItems: 'center', gap: 10, paddingBottom: 4 }}>
-            {/* Avatar in a dashed ring, like the reference profile. */}
-            <View style={{ width: 92, height: 92, borderRadius: 46, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.brand, alignItems: 'center', justifyContent: 'center' }}>
-              <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
-                <Text variant="title" color="#000000" weight="600">
-                  {(u?.name ?? 'A').charAt(0).toUpperCase()}
-                </Text>
+            {/* Avatar in a dashed ring, like the reference profile; it springs in. */}
+            <PopIn>
+              <View
+                style={{
+                  width: 92,
+                  height: 92,
+                  borderRadius: 46,
+                  borderWidth: 1.5,
+                  borderStyle: 'dashed',
+                  borderColor: c.brand,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <View
+                  style={{
+                    width: 76,
+                    height: 76,
+                    borderRadius: 38,
+                    backgroundColor: '#FFFFFF',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text variant="title" color="#000000" weight="600">
+                    {(u?.name ?? 'A').charAt(0).toUpperCase()}
+                  </Text>
+                </View>
               </View>
-            </View>
+            </PopIn>
             <View style={{ alignItems: 'center', gap: 2 }}>
               <Text variant="title2" color="#FFFFFF" numberOfLines={1}>
                 {u?.name ?? '…'}
@@ -221,7 +244,13 @@ export default function Settings() {
                   accessibilityState={{ checked: on }}
                   accessibilityLabel={l.label}
                   onPress={() => setLanguage(l.value)}
-                  style={{ height: 44, borderRadius: 22, backgroundColor: on ? c.accent : 'transparent', alignItems: 'center', justifyContent: 'center' }}
+                  style={{
+                    height: 44,
+                    borderRadius: 22,
+                    backgroundColor: on ? c.accent : 'transparent',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
                 >
                   <Text variant="footnote" weight="600" color={on ? c.onAccent : c.label} numberOfLines={1}>
                     {l.label}
@@ -236,11 +265,11 @@ export default function Settings() {
       <View>
         <SectionLabel>{t('Money and voice')}</SectionLabel>
         <View style={group}>
-          <ListRow icon="cash" tile="#0E7A4B" title={t("Currency")} value={cur} onPress={() => setPicker('currency')} />
+          <ListRow icon="cash" tile="#0E7A4B" title={t('Currency')} value={cur} onPress={() => setPicker('currency')} />
           <ListRow
             icon="mic"
             tile="#AF52DE"
-            title={t("Voice language")}
+            title={t('Voice language')}
             value={t(VOICE_LABEL[u?.voiceLanguage ?? 'auto'])}
             onPress={() => setPicker('voice')}
             last
@@ -254,28 +283,28 @@ export default function Settings() {
           <ListRow
             icon="wallet"
             tile="#0E7A4B"
-            title={t("Monthly income")}
+            title={t('Monthly income')}
             value={formatAmount(u?.monthlyIncome ?? 0, cur)}
             onPress={() => router.push({ pathname: '/onboarding', params: { mode: 'edit' } })}
           />
           <ListRow
             icon="home"
             tile="#FF9500"
-            title={t("Fixed costs")}
+            title={t('Fixed costs')}
             value={formatAmount(u?.fixedCostsMonthly ?? 0, cur)}
             onPress={() => router.push({ pathname: '/onboarding', params: { mode: 'edit' } })}
           />
           <ListRow
             icon="target"
             tile="#007AFF"
-            title={t("Savings goal")}
+            title={t('Savings goal')}
             value={formatAmount(u?.savingsGoalMonthly ?? 0, cur)}
             onPress={() => router.push({ pathname: '/onboarding', params: { mode: 'edit' } })}
           />
           <ListRow
             icon="gauge"
             tile="#30B0C7"
-            title={t("Daily allowance")}
+            title={t('Daily allowance')}
             value={formatAmount(daily.data?.dailyAllowance ?? 0, cur)}
             valueColor={c.accent}
             last
@@ -286,18 +315,18 @@ export default function Settings() {
       <View>
         <SectionLabel>{t('Notifications')}</SectionLabel>
         <View style={group}>
-          <ListRow icon="clock" tile="#5856D6" title={t("Daily report")} value={reportTime} onPress={() => setPicker('time')} />
+          <ListRow icon="clock" tile="#5856D6" title={t('Daily report')} value={reportTime} onPress={() => setPicker('time')} />
           <ListRow
             icon="bell"
             tile="#E5484D"
-            title={t("Notifications")}
+            title={t('Notifications')}
             last
             right={
               <Switch
                 value={pushEnabled}
                 onValueChange={togglePush}
                 trackColor={{ true: '#34C759', false: c.fill2 }}
-                accessibilityLabel={t("Notifications")}
+                accessibilityLabel={t('Notifications')}
               />
             }
           />
@@ -312,8 +341,8 @@ export default function Settings() {
       <PickerSheet
         visible={picker === 'time'}
         onClose={() => setPicker(null)}
-        title={t("Daily report time")}
-        hint={t("FeMate sends your report to Telegram and as a notification at this time.")}
+        title={t('Daily report time')}
+        hint={t('FeMate sends your report to Telegram and as a notification at this time.')}
       >
         {REPORT_TIMES.map((time) => (
           <Chip key={time} label={time} icon="clock" selected={time === reportTime} onPress={() => void chooseTime(time)} />
@@ -323,12 +352,15 @@ export default function Settings() {
       <PickerSheet
         visible={picker === 'currency'}
         onClose={() => setPicker(null)}
-        title={t("Currency")}
-        hint={t('Balances, history, budgets and agent limits are converted at fixed sandbox rates ({rates}). You can still log an expense in any currency, like “coffee $4.50”.', {
-          rates: CURRENCIES.filter((x) => x !== 'UZS')
-            .map(rate)
-            .join(', '),
-        })}
+        title={t('Currency')}
+        hint={t(
+          'Balances, history, budgets and agent limits are converted at fixed sandbox rates ({rates}). You can still log an expense in any currency, like “coffee $4.50”.',
+          {
+            rates: CURRENCIES.filter((x) => x !== 'UZS')
+              .map(rate)
+              .join(', '),
+          },
+        )}
       >
         {CURRENCIES.map((x) => (
           <Chip key={x} label={`${x} · ${t(CURRENCY_INFO[x].name)}`} selected={x === cur} onPress={() => void chooseCurrency(x)} />
@@ -338,8 +370,10 @@ export default function Settings() {
       <PickerSheet
         visible={picker === 'voice'}
         onClose={() => setPicker(null)}
-        title={t("Voice language")}
-        hint={t("What you speak in voice notes, in the app and in Telegram. Auto-detect works for most; pick one if short notes come out wrong.")}
+        title={t('Voice language')}
+        hint={t(
+          'What you speak in voice notes, in the app and in Telegram. Auto-detect works for most; pick one if short notes come out wrong.',
+        )}
       >
         {VOICE_LANGUAGES.map((v) => (
           <Chip
@@ -358,7 +392,7 @@ export default function Settings() {
           <ListRow
             icon="family"
             tile="#1C1C1E"
-            title={t("Family budget")}
+            title={t('Family budget')}
             value={family.data ? family.data.family.name : t('Set up')}
             last
             onPress={() => router.push('/family')}
@@ -369,7 +403,7 @@ export default function Settings() {
       <View>
         <SectionLabel>{t('FeMate card')}</SectionLabel>
         <View style={group}>
-          <ListRow icon="card" tile="#0E7A4B" title={t("Virtual card")} last onPress={() => router.push('/card')} />
+          <ListRow icon="card" tile="#0E7A4B" title={t('Virtual card')} last onPress={() => router.push('/card')} />
         </View>
       </View>
 
@@ -379,7 +413,9 @@ export default function Settings() {
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <IconTile name="send" bg="#2AABEE" fg="#FFFFFF" size={30} iconSize={18} rounded={8} />
             <Text variant="callout" color="body" style={{ flex: 1 }}>
-              {t('Add expenses, forward bank SMS and get your daily report in Telegram. The bot can read and add, but it can never move money.')}
+              {t(
+                'Add expenses, forward bank SMS and get your daily report in Telegram. The bot can read and add, but it can never move money.',
+              )}
             </Text>
           </View>
           {me.data?.telegramLinked && !activeCode ? (
@@ -388,7 +424,7 @@ export default function Settings() {
               <Text variant="callout" style={{ flex: 1 }}>
                 {t('Linked to @femate_uz_bot')}
               </Text>
-              <Button title={t("Open")} variant="tinted" size="small" onPress={() => Linking.openURL(BOT_URL)} />
+              <Button title={t('Open')} variant="tinted" size="small" onPress={() => Linking.openURL(BOT_URL)} />
             </View>
           ) : activeCode ? (
             <View style={{ alignItems: 'center', gap: 10, padding: 14, borderRadius: 14, backgroundColor: c.fill }}>
@@ -399,7 +435,7 @@ export default function Settings() {
                 {t('Send /start {code} to @femate_uz_bot, or tap below.', { code: activeCode.code })}
               </Text>
               <Button
-                title={t("Open in Telegram")}
+                title={t('Open in Telegram')}
                 icon="send"
                 size="medium"
                 onPress={() => Linking.openURL(`${BOT_URL}?start=${activeCode.code}`)}
@@ -414,7 +450,7 @@ export default function Settings() {
             </View>
           ) : (
             <Button
-              title={t("Get a link code")}
+              title={t('Get a link code')}
               icon="link"
               variant="tinted"
               size="medium"
@@ -430,14 +466,14 @@ export default function Settings() {
         <ListRow
           icon="shieldCheck"
           tile="#0E7A4B"
-          title={t("Agent permissions")}
+          title={t('Agent permissions')}
           value={perms.data?.agentEnabled === false ? t('Stopped') : perms.data?.level}
           onPress={() => router.navigate('/activity')}
         />
         <ListRow
           icon="logout"
           tile={c.danger}
-          title={t("Sign out")}
+          title={t('Sign out')}
           destructive
           last
           onPress={async () => {
@@ -481,7 +517,7 @@ function PickerSheet({
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
       <Pressable
-        accessibilityLabel={t("Close")}
+        accessibilityLabel={t('Close')}
         onPress={onClose}
         style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
       >

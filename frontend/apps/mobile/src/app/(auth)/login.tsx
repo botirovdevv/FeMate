@@ -11,8 +11,11 @@ import { api, errorMessage } from '@/lib/api';
 import { useSession } from '@/store/session';
 import { useTheme } from '@/theme';
 import { useT } from '@/i18n';
+import { useCurtain } from '@/components/Curtain';
+import { FadeIn, Stagger } from '@/components/motion';
 
 export default function Login() {
+  const { run: closeCurtain, curtain } = useCurtain();
   const { t } = useT();
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
@@ -37,7 +40,7 @@ export default function Login() {
       const res = await api.login({ email: email.trim(), password });
       await signIn(res.token);
       haptic('success');
-      router.replace('/(tabs)');
+      closeCurtain(() => router.replace('/(tabs)'));
     } catch (e) {
       haptic('warning');
       setError(errorMessage(e));
@@ -47,74 +50,86 @@ export default function Login() {
   };
 
   return (
-    <KeyboardScreen style={{ backgroundColor: c.bg }} bounces={false}>
-      <AuthHero compact={typing} subtitle={t("Welcome back! Sign in to continue. Your AI money co-pilot moves money only when you say so.")} />
-
-      <View style={{ flex: 1, paddingHorizontal: 28, paddingTop: typing ? 20 : 12, paddingBottom: insets.bottom + 20, gap: 18 }}>
-        <Text variant="title" accessibilityRole="header">
-          {t('Sign in')}
-        </Text>
-
-        <AuthField
-          label={t("Email")}
-          value={email}
-          onChangeText={setEmail}
-          placeholder={t("Enter your email")}
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          textContentType="emailAddress"
-          returnKeyType="next"
-          onSubmitEditing={() => passwordRef.current?.focus()}
-        />
-        <AuthField
-          ref={passwordRef}
-          label={t("Password")}
-          secure
-          value={password}
-          onChangeText={setPassword}
-          placeholder={t("Enter your password")}
-          autoComplete="current-password"
-          textContentType="password"
-          returnKeyType="go"
-          onSubmitEditing={submit}
-        />
-        {error ? (
-          <Text variant="footnote" color="danger" accessibilityLiveRegion="polite">
-            {error}
-          </Text>
-        ) : null}
-
-        <Button title={t("Sign in")} onPress={submit} loading={busy} />
-
-        <Divider label={t("Or")} />
-
-        <Button
-          title={t("Use demo account · aziz@femate.uz")}
-          icon="user"
-          variant="secondary"
-          onPress={() => {
-            haptic('light');
-            setEmail('aziz@femate.uz');
-            setPassword('demo1234');
-            setError(null);
-          }}
+    <View style={{ flex: 1 }}>
+      <KeyboardScreen style={{ backgroundColor: c.bg }} bounces={false}>
+        <AuthHero
+          compact={typing}
+          subtitle={t('Welcome back! Sign in to continue. Your AI money co-pilot moves money only when you say so.')}
         />
 
-        <View style={{ flex: 1, minHeight: 12 }} />
-        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
-          <Text variant="callout" color="secondary">
-            {t('Don’t have an account?')}
-          </Text>
-          <Link href="/register" asChild>
-            <Pressable accessibilityRole="link" style={{ minHeight: 44, justifyContent: 'center' }}>
-              <Text variant="callout" weight="700">
-                {t('Sign up')}
+        <FadeIn
+          from={80}
+          duration={640}
+          style={{ flex: 1, paddingHorizontal: 28, paddingTop: typing ? 20 : 12, paddingBottom: insets.bottom + 20, gap: 18 }}
+        >
+          <Stagger start={160} step={50}>
+            <Text variant="title" accessibilityRole="header">
+              {t('Sign in')}
+            </Text>
+
+            <AuthField
+              label={t('Email')}
+              value={email}
+              onChangeText={setEmail}
+              placeholder={t('Enter your email')}
+              autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+            />
+            <AuthField
+              ref={passwordRef}
+              label={t('Password')}
+              secure
+              value={password}
+              onChangeText={setPassword}
+              placeholder={t('Enter your password')}
+              autoComplete="current-password"
+              textContentType="password"
+              returnKeyType="go"
+              onSubmitEditing={submit}
+            />
+            {error ? (
+              <Text variant="footnote" color="danger" accessibilityLiveRegion="polite">
+                {error}
               </Text>
-            </Pressable>
-          </Link>
-        </View>
-      </View>
-    </KeyboardScreen>
+            ) : null}
+
+            <Button title={t('Sign in')} onPress={submit} loading={busy} />
+
+            <Divider label={t('Or')} />
+
+            <Button
+              title={t('Use demo account · aziz@femate.uz')}
+              icon="user"
+              variant="secondary"
+              onPress={() => {
+                haptic('light');
+                setEmail('aziz@femate.uz');
+                setPassword('demo1234');
+                setError(null);
+              }}
+            />
+
+            <View style={{ flex: 1, minHeight: 12 }} />
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
+              <Text variant="callout" color="secondary">
+                {t('Don’t have an account?')}
+              </Text>
+              <Link href="/register" asChild>
+                <Pressable accessibilityRole="link" style={{ minHeight: 44, justifyContent: 'center' }}>
+                  <Text variant="callout" weight="700">
+                    {t('Sign up')}
+                  </Text>
+                </Pressable>
+              </Link>
+            </View>
+          </Stagger>
+        </FadeIn>
+      </KeyboardScreen>
+      {curtain}
+    </View>
   );
 }

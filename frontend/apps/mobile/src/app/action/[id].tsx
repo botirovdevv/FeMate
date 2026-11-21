@@ -12,6 +12,7 @@ import { formatAmount, formatMoney } from '@/lib/format';
 import { useAccounts, useActions, useApproveAction, usePermissions, useRejectAction } from '@/lib/queries';
 import { useTheme } from '@/theme';
 import { useT } from '@/i18n';
+import { PopIn } from '@/components/motion';
 
 function minutesLeft(iso?: string) {
   if (!iso) return null;
@@ -35,7 +36,11 @@ export default function ActionSheet() {
   if (!a) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.sheet }}>
-        {actions.isLoading ? <ActivityIndicator color={c.secondary} /> : <Text color="secondary">{t('This action no longer exists.')}</Text>}
+        {actions.isLoading ? (
+          <ActivityIndicator color={c.secondary} />
+        ) : (
+          <Text color="secondary">{t('This action no longer exists.')}</Text>
+        )}
       </View>
     );
   }
@@ -51,8 +56,14 @@ export default function ActionSheet() {
   const checks: { ok: boolean; text: string }[] = isTransfer
     ? [
         { ok: true, text: t('Your own accounts only (Card → Savings)') },
-        { ok: !!p && amount <= p.perActionLimit, text: t('Under the {amount} per-action limit', { amount: formatAmount(p?.perActionLimit ?? 0, cur) }) },
-        { ok: !!p && amount <= p.dailyLimit, text: t('Within the {amount} daily agent limit', { amount: formatAmount(p?.dailyLimit ?? 0, cur) }) },
+        {
+          ok: !!p && amount <= p.perActionLimit,
+          text: t('Under the {amount} per-action limit', { amount: formatAmount(p?.perActionLimit ?? 0, cur) }),
+        },
+        {
+          ok: !!p && amount <= p.dailyLimit,
+          text: t('Within the {amount} daily agent limit', { amount: formatAmount(p?.dailyLimit ?? 0, cur) }),
+        },
         { ok: (card?.balance ?? 0) >= amount, text: t('Card balance covers the amount') },
       ]
     : [{ ok: true, text: t('Budgets never move money') }];
@@ -92,11 +103,26 @@ export default function ActionSheet() {
   if (done && (a.status === 'executed' || a.status === 'rejected')) {
     const ok = a.status === 'executed';
     return (
-      <ScrollView style={{ flex: 1, backgroundColor: c.sheet }} contentContainerStyle={{ padding: 24, paddingTop: 40, paddingBottom: insets.bottom + 24, gap: 22 }}>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: c.sheet }}
+        contentContainerStyle={{ padding: 24, paddingTop: 40, paddingBottom: insets.bottom + 24, gap: 22 }}
+      >
         <View style={{ alignItems: 'center', gap: 14 }} accessibilityLiveRegion="polite">
-          <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: ok ? c.positiveTint : c.fill, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name={ok ? 'check' : 'x'} size={46} color={ok ? c.positive : c.secondary} strokeWidth={2.4} />
-          </View>
+          {/* The result mark springs in, then the text and numbers follow (reference "Order placed"). */}
+          <PopIn>
+            <View
+              style={{
+                width: 96,
+                height: 96,
+                borderRadius: 48,
+                backgroundColor: ok ? c.positiveTint : c.fill,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Icon name={ok ? 'check' : 'x'} size={46} color={ok ? c.positive : c.secondary} strokeWidth={2.4} />
+            </View>
+          </PopIn>
           <Text variant="title" style={{ textAlign: 'center' }}>
             {ok ? (isTransfer ? t('Moved to Savings') : t('Budget set')) : t('Nothing was moved')}
           </Text>
@@ -113,15 +139,18 @@ export default function ActionSheet() {
           />
         ) : null}
         <View style={{ gap: 10 }}>
-          <PillButton title={t("View audit log")} icon="file" variant="secondary" onPress={() => router.navigate('/activity')} />
-          <PillButton title={t("Done")} onPress={() => router.back()} />
+          <PillButton title={t('View audit log')} icon="file" variant="secondary" onPress={() => router.navigate('/activity')} />
+          <PillButton title={t('Done')} onPress={() => router.back()} />
         </View>
       </ScrollView>
     );
   }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: c.sheet }} contentContainerStyle={{ padding: 24, paddingTop: 28, paddingBottom: insets.bottom + 24, gap: 20 }}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: c.sheet }}
+      contentContainerStyle={{ padding: 24, paddingTop: 28, paddingBottom: insets.bottom + 24, gap: 20 }}
+    >
       <View style={{ gap: 6 }}>
         <BrandMark />
         <Text variant="title" accessibilityRole="header">
@@ -133,7 +162,13 @@ export default function ActionSheet() {
       </View>
 
       {isTransfer ? (
-        <Text variant="largeTitle" tabular style={{ fontSize: 48, lineHeight: 56, letterSpacing: -1, textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>
+        <Text
+          variant="largeTitle"
+          tabular
+          style={{ fontSize: 48, lineHeight: 56, letterSpacing: -1, textAlign: 'center' }}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
           {formatMoney(amount, cur)}
         </Text>
       ) : (
@@ -171,7 +206,16 @@ export default function ActionSheet() {
         </View>
         {checks.map((ch) => (
           <View key={ch.text} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: ch.ok ? c.positiveTint : c.dangerTint, alignItems: 'center', justifyContent: 'center' }}>
+            <View
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 11,
+                backgroundColor: ch.ok ? c.positiveTint : c.dangerTint,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               <Icon name={ch.ok ? 'check' : 'x'} size={13} color={ch.ok ? c.positive : c.dangerInk} strokeWidth={2.8} />
             </View>
             <Text variant="callout" style={{ flex: 1 }}>
@@ -192,8 +236,20 @@ export default function ActionSheet() {
 
       {a.status === 'pending' ? (
         <View style={{ gap: 10 }}>
-          <PillButton title={isTransfer ? t('Approve {amount}', { amount: formatMoney(amount, cur) }) : t('Approve')} icon="check" onPress={() => void onApprove()} loading={approve.isPending} disabled={deciding} />
-          <PillButton title={t("Reject")} variant="secondary" onPress={() => void onReject()} loading={reject.isPending} disabled={deciding} />
+          <PillButton
+            title={isTransfer ? t('Approve {amount}', { amount: formatMoney(amount, cur) }) : t('Approve')}
+            icon="check"
+            onPress={() => void onApprove()}
+            loading={approve.isPending}
+            disabled={deciding}
+          />
+          <PillButton
+            title={t('Reject')}
+            variant="secondary"
+            onPress={() => void onReject()}
+            loading={reject.isPending}
+            disabled={deciding}
+          />
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 5 }}>
             <Icon name="shieldCheck" size={13} color={c.secondary} strokeWidth={2} />
             <Text variant="caption" color="secondary">
@@ -202,7 +258,7 @@ export default function ActionSheet() {
           </View>
         </View>
       ) : (
-        <PillButton title={t("Close")} variant="secondary" onPress={() => router.back()} />
+        <PillButton title={t('Close')} variant="secondary" onPress={() => router.back()} />
       )}
     </ScrollView>
   );

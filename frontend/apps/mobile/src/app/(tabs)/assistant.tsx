@@ -16,6 +16,7 @@ import { formatAmount, formatMoney } from '@/lib/format';
 import { useActions, useApplyRecommendation, useChat, useInsight, usePermissions, useRecommendations } from '@/lib/queries';
 import { useTheme } from '@/theme';
 import { useT } from '@/i18n';
+import { FadeIn } from '@/components/motion';
 
 interface Msg {
   id: string;
@@ -240,92 +241,91 @@ export default function Assistant() {
             // A pending action decided since (here, in Agent or in Telegram) drops its Review card.
             const a = m.action?.status === 'pending' && !pendingIds.has(m.action.id) ? undefined : m.action;
             return (
-              <View
-                key={m.id}
-                style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-end', justifyContent: me ? 'flex-end' : 'flex-start' }}
-              >
-                {!me ? <IconTile name="bot" bg={c.brand} fg={c.onBrand} size={28} iconSize={15} /> : null}
-                <View style={{ maxWidth: '80%', gap: 6, alignItems: me ? 'flex-end' : 'flex-start' }}>
-                  <View
-                    style={{
-                      paddingVertical: 10,
-                      paddingHorizontal: 14,
-                      borderRadius: 20,
-                      borderBottomRightRadius: me ? 6 : 20,
-                      borderBottomLeftRadius: me ? 20 : 6,
-                      backgroundColor: me ? c.accent : c.card,
-                    }}
-                  >
-                    <Text variant="body" color={me ? c.onAccent : c.label} selectable>
-                      {m.text}
-                    </Text>
-                  </View>
-                  {a && a.status === 'pending' ? (
-                    <PressableScale
-                      onPress={() => router.push({ pathname: '/action/[id]', params: { id: a.id } })}
-                      accessibilityRole="button"
+              <FadeIn key={m.id} from={10} duration={360}>
+                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-end', justifyContent: me ? 'flex-end' : 'flex-start' }}>
+                  {!me ? <IconTile name="bot" bg={c.brand} fg={c.onBrand} size={28} iconSize={15} /> : null}
+                  <View style={{ maxWidth: '80%', gap: 6, alignItems: me ? 'flex-end' : 'flex-start' }}>
+                    <View
                       style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 12,
-                        padding: 12,
+                        paddingVertical: 10,
                         paddingHorizontal: 14,
-                        borderRadius: 18,
-                        backgroundColor: c.warnTint,
+                        borderRadius: 20,
+                        borderBottomRightRadius: me ? 6 : 20,
+                        borderBottomLeftRadius: me ? 20 : 6,
+                        backgroundColor: me ? c.accent : c.card,
                       }}
                     >
-                      <Icon name="transfer" size={20} color={c.warnInk} strokeWidth={2} />
-                      <View style={{ flex: 1 }}>
-                        <Text variant="callout" weight="600" tabular numberOfLines={1} adjustsFontSizeToFit>
-                          {t('Card → Savings · {amount}', { amount: formatAmount(a.amount ?? 0, cur) })}
+                      <Text variant="body" color={me ? c.onAccent : c.label} selectable>
+                        {m.text}
+                      </Text>
+                    </View>
+                    {a && a.status === 'pending' ? (
+                      <PressableScale
+                        onPress={() => router.push({ pathname: '/action/[id]', params: { id: a.id } })}
+                        accessibilityRole="button"
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 12,
+                          padding: 12,
+                          paddingHorizontal: 14,
+                          borderRadius: 18,
+                          backgroundColor: c.warnTint,
+                        }}
+                      >
+                        <Icon name="transfer" size={20} color={c.warnInk} strokeWidth={2} />
+                        <View style={{ flex: 1 }}>
+                          <Text variant="callout" weight="600" tabular numberOfLines={1} adjustsFontSizeToFit>
+                            {t('Card → Savings · {amount}', { amount: formatAmount(a.amount ?? 0, cur) })}
+                          </Text>
+                          <Text variant="footnote" color="warnInk">
+                            {t('Pending your approval')}
+                          </Text>
+                        </View>
+                        <Text variant="callout" color="warnInk" weight="600">
+                          {t('Review')}
                         </Text>
-                        <Text variant="footnote" color="warnInk">
-                          {t('Pending your approval')}
+                      </PressableScale>
+                    ) : null}
+                    {a && a.status === 'blocked' ? (
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 5,
+                          backgroundColor: c.dangerTint,
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          borderRadius: 8,
+                        }}
+                      >
+                        <Icon name="ban" size={12} color={c.dangerInk} strokeWidth={2.6} />
+                        <Text variant="caption" color="dangerInk" weight="600">
+                          {t('Blocked by policy · {code}', { code: a.reason.split(':')[0] ?? '' })}
                         </Text>
                       </View>
-                      <Text variant="callout" color="warnInk" weight="600">
-                        {t('Review')}
-                      </Text>
-                    </PressableScale>
-                  ) : null}
-                  {a && a.status === 'blocked' ? (
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 5,
-                        backgroundColor: c.dangerTint,
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                        borderRadius: 8,
-                      }}
-                    >
-                      <Icon name="ban" size={12} color={c.dangerInk} strokeWidth={2.6} />
-                      <Text variant="caption" color="dangerInk" weight="600">
-                        {t('Blocked by policy · {code}', { code: a.reason.split(':')[0] ?? '' })}
-                      </Text>
-                    </View>
-                  ) : null}
-                  {a && a.status === 'executed' ? (
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 5,
-                        backgroundColor: c.positiveTint,
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                        borderRadius: 8,
-                      }}
-                    >
-                      <Icon name="check" size={12} color={c.positiveInk} strokeWidth={2.6} />
-                      <Text variant="caption" color="positiveInk" weight="600">
-                        {t('Done automatically')}
-                      </Text>
-                    </View>
-                  ) : null}
+                    ) : null}
+                    {a && a.status === 'executed' ? (
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 5,
+                          backgroundColor: c.positiveTint,
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          borderRadius: 8,
+                        }}
+                      >
+                        <Icon name="check" size={12} color={c.positiveInk} strokeWidth={2.6} />
+                        <Text variant="caption" color="positiveInk" weight="600">
+                          {t('Done automatically')}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
                 </View>
-              </View>
+              </FadeIn>
             );
           })}
           {chat.isPending ? (

@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeyboardHeight } from '@/lib/useKeyboardHeight';
 import { space, useTheme } from '@/theme';
 import { TAB_BAR_SPACE } from './PillTabBar';
+import { MotionScope, Stagger } from './motion';
 import { HeroHeader } from './slate';
 import { Text } from './ui';
 
@@ -49,41 +50,45 @@ export function Screen({
   const insets = useSafeAreaInsets();
   const kb = useKeyboardHeight();
   return (
-    <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <ScrollView
-        {...scrollProps}
-        contentInsetAdjustmentBehavior="never"
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-        showsVerticalScrollIndicator={false}
-        refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={c.secondary} /> : undefined}
-        contentContainerStyle={{
-          paddingTop: title ? 0 : insets.top + space.md,
-          // While typing, the keyboard covers the tab bar, so room for the keyboard replaces it.
-          paddingBottom: (kb > 0 ? kb : tabs ? insets.bottom + TAB_BAR_HEIGHT : insets.bottom) + space.xxl + bottomInset,
-        }}
-      >
-        {title ? (
-          <HeroHeader title={title} back={back} right={right}>
-            {subtitle || hero ? (
-              <View style={{ gap: 16 }}>
-                {typeof subtitle === 'string' ? (
-                  <Text variant="callout" color="rgba(255,255,255,0.6)" style={{ marginTop: -8 }}>
-                    {subtitle}
-                  </Text>
-                ) : (
-                  subtitle
-                )}
-                {hero}
-              </View>
-            ) : null}
-          </HeroHeader>
-        ) : null}
-        <View style={{ paddingHorizontal: space.xl, paddingTop: title ? space.xxl : 0, gap: space.xl }}>
-          {header}
-          {children}
-        </View>
-      </ScrollView>
-    </View>
+    <MotionScope replayOnFocus={tabs}>
+      <View style={{ flex: 1, backgroundColor: c.bg }}>
+        <ScrollView
+          {...scrollProps}
+          contentInsetAdjustmentBehavior="never"
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={c.secondary} /> : undefined
+          }
+          contentContainerStyle={{
+            paddingTop: title ? 0 : insets.top + space.md,
+            // While typing, the keyboard covers the tab bar, so room for the keyboard replaces it.
+            paddingBottom: (kb > 0 ? kb : tabs ? insets.bottom + TAB_BAR_HEIGHT : insets.bottom) + space.xxl + bottomInset,
+          }}
+        >
+          {title ? (
+            <HeroHeader title={title} back={back} right={right}>
+              {subtitle || hero ? (
+                <View style={{ gap: 16 }}>
+                  {typeof subtitle === 'string' ? (
+                    <Text variant="callout" color="rgba(255,255,255,0.6)" style={{ marginTop: -8 }}>
+                      {subtitle}
+                    </Text>
+                  ) : (
+                    subtitle
+                  )}
+                  {hero}
+                </View>
+              ) : null}
+            </HeroHeader>
+          ) : null}
+          <View style={{ paddingHorizontal: space.xl, paddingTop: title ? space.xxl : 0, gap: space.xl }}>
+            {header}
+            <Stagger start={120}>{children}</Stagger>
+          </View>
+        </ScrollView>
+      </View>
+    </MotionScope>
   );
 }
