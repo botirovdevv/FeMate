@@ -36,6 +36,7 @@ export const toTransaction = (t: Row<typeof s.transactions>): Transaction => ({
   source: t.source,
   occurredAt: t.occurredAt.toISOString(),
   ...(t.originalAmount !== null && t.originalCurrency ? { original: { amount: t.originalAmount, currency: t.originalCurrency } } : {}),
+  ...(t.familyId ? { familyId: t.familyId } : {}),
 });
 
 export const toAction = (a: Row<typeof s.agentActions>): AgentAction => ({
@@ -84,6 +85,7 @@ export const toPaymentCard = (c: Row<typeof s.cards>): PaymentCard => ({
   frozen: c.frozen,
   blockOverBudget: c.blockOverBudget,
   accountId: c.accountId,
+  payFromFamily: c.payFromFamily,
   createdAt: c.createdAt.toISOString(),
 });
 

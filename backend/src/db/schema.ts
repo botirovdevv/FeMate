@@ -1,5 +1,17 @@
 // Database schema (PLAN.md §7). Money is an integer in the user's currency's minor unit, ids are prefixed nanoids.
-import type { AgentActionStatus, AuditEntry, Category, Currency, PermissionLevel, Scope, TransactionSource, VoiceLanguage } from '@femate/shared';
+import type {
+  AgentActionStatus,
+  AuditEntry,
+  Category,
+  Currency,
+  FamilyRequestKind,
+  FamilyRequestStatus,
+  FamilyRole,
+  PermissionLevel,
+  Scope,
+  TransactionSource,
+  VoiceLanguage,
+} from '@femate/shared';
 import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow();
@@ -55,9 +67,11 @@ export const transactions = pgTable(
     originalAmount: integer('original_amount'),
     originalCurrency: text('original_currency').$type<Currency>(),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+    // Set when the spend was paid from the family budget; kept as plain text so deleting a family keeps the history.
+    familyId: text('family_id'),
     createdAt: createdAt(),
   },
-  (t) => [index('transactions_user_time_idx').on(t.userId, t.occurredAt)],
+  (t) => [index('transactions_user_time_idx').on(t.userId, t.occurredAt), index('transactions_family_time_idx').on(t.familyId, t.occurredAt)],
 );
 
 export const budgets = pgTable(
@@ -166,6 +180,8 @@ export const cards = pgTable('cards', {
   expYear: text('exp_year').notNull(),
   frozen: boolean('frozen').notNull().default(false),
   blockOverBudget: boolean('block_over_budget').notNull().default(true),
+  // Purchases count against the family budget (and its approval limit) instead of only the personal one.
+  payFromFamily: boolean('pay_from_family').notNull().default(false),
   createdAt: createdAt(),
 });
 
@@ -206,4 +222,69 @@ export const alerts = pgTable(
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex('alerts_user_kind_key_idx').on(t.userId, t.kind, t.key)],
+);
+
+// Family budget: one manager (a parent), members join with an invite code, one family per user.
+export const families = pgTable('families', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  managerId: text('manager_id')
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  // Amounts are in the manager's currency at creation time.
+  currency: text('currency').$type<Currency>().notNull(),
+  monthlyBudget: integer('monthly_budget').notNull(),
+  // A member's family spend above this needs the manager's approval.
+  approvalThreshold: integer('approval_threshold').notNull(),
+  createdAt: createdAt(),
+});
+
+export const familyMembers = pgTable(
+  'family_members',
+  {
+    familyId: text('family_id')
+      .notNull()
+      .references(() => families.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .unique()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    role: text('role').$type<FamilyRole>().notNull(),
+    joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('family_members_family_idx').on(t.familyId)],
+);
+
+export const familyInvites = pgTable('family_invites', {
+  code: text('code').primaryKey(),
+  familyId: text('family_id')
+    .notNull()
+    .references(() => families.id, { onDelete: 'cascade' }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  usedBy: text('used_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: createdAt(),
+});
+
+// A member's family spend waiting for the manager: an expense to record, or a card purchase to allow.
+export const familyRequests = pgTable(
+  'family_requests',
+  {
+    id: text('id').primaryKey(),
+    familyId: text('family_id')
+      .notNull()
+      .references(() => families.id, { onDelete: 'cascade' }),
+    userId: userRef(),
+    kind: text('kind').$type<FamilyRequestKind>().notNull(),
+    // In the family's currency.
+    amount: integer('amount').notNull(),
+    category: text('category').$type<Category>().notNull(),
+    description: text('description').notNull(),
+    status: text('status').$type<FamilyRequestStatus>().notNull(),
+    transactionId: text('transaction_id').references(() => transactions.id, { onDelete: 'set null' }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+  },
+  (t) => [index('family_requests_family_idx').on(t.familyId, t.createdAt)],
 );

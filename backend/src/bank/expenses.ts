@@ -34,7 +34,16 @@ export function spentText(t: { amount: number; originalAmount: number | null; or
 export async function addExpense(
   db: Db,
   userId: string,
-  e: { amount: number; currency?: Currency | null; category: Category; description: string; source: TransactionSource; occurredAt?: Date },
+  e: {
+    amount: number;
+    currency?: Currency | null;
+    category: Category;
+    description: string;
+    source: TransactionSource;
+    occurredAt?: Date;
+    /** Paid from this family's budget. The caller has already run the Family Guard. */
+    familyId?: string;
+  },
   from: 'cash' | 'card' = 'cash',
 ) {
   const cash = (await accountOfType(db, userId, from)) ?? (await accountOfType(db, userId, from === 'cash' ? 'card' : 'cash'));
@@ -72,7 +81,7 @@ export async function addExpense(
       event: `expense.${e.source}`,
       decision: 'info',
       reason: `Recorded ${spentText(t, own)} for ${e.category}: “${e.description}”.`,
-      details: { transactionId: t.id, amount: t.amount, category: e.category, source: e.source },
+      details: { transactionId: t.id, amount: t.amount, category: e.category, source: e.source, ...(e.familyId ? { familyId: e.familyId } : {}) },
     });
   }
   await checkSpendingAlerts(db, userId, t).catch(() => undefined); // an alert must never undo a recorded expense

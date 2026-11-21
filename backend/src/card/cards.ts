@@ -1,12 +1,13 @@
 // FeMate virtual card: issuing, and the live approve/decline decision for every purchase
 // (Lithic Auth Stream Access). Plain code decides, like Policy Guard; checks run in order and the first failure wins.
 import { CURRENCIES, categorize, convertMoney, formatMoney, type Category, type Currency } from '@femate/shared';
-import { and, eq, gte, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, sql } from 'drizzle-orm';
 
 import { audit } from '../audit/audit';
 import { accountOfType } from '../bank/mockBank';
 import type { Db } from '../db/client';
-import { accounts, budgets, cardAuthorizations, cards, transactions, users } from '../db/schema';
+import { accounts, budgets, cardAuthorizations, cards, familyRequests, transactions, users } from '../db/schema';
+import { auditFamily, checkFamilySpend, expireRequests, type FamilyRow } from '../family/family';
 import { ApiError } from '../lib/errors';
 import { newId } from '../lib/ids';
 import { checkSpendingAlerts } from '../notify/spendingAlerts';
@@ -156,8 +157,60 @@ export async function decideAuthorization(db: Db, req: AsaRequest): Promise<AsaD
       }
     }
   }
-  // 5. Approve: debit the card account and record the purchase
-  const approved = await record(db, card, req, { amount, own, charged, cents, merchant, category, result: 'APPROVED', reason: `${merchant} ${spent} approved.` });
+  // 5. Family budget, when the card pays from it: the budget must cover it, and a member's purchase over the
+  // approval limit needs a permission the manager approved in advance (the network can't wait for a reply).
+  let family: FamilyRow | undefined;
+  let permission: string | undefined;
+  if (card.payFromFamily) {
+    const g = await checkFamilySpend(db, card.userId, amount);
+    const familyDecline = (family: FamilyRow, reason: string) => {
+      void auditFamily(db, family, card.userId, { event: 'family.card', decision: 'blocked', reason }, 'system').catch(() => undefined);
+      return decline('VELOCITY_EXCEEDED', reason);
+    };
+    if (g.result === 'block' && g.family) return familyDecline(g.family, `${merchant} ${spent} declined: ${g.message}`);
+    if (g.result === 'approval') {
+      await expireRequests(db, g.family.id);
+      const [ok] = await db
+        .select({ id: familyRequests.id })
+        .from(familyRequests)
+        .where(
+          and(
+            eq(familyRequests.userId, card.userId),
+            eq(familyRequests.familyId, g.family.id),
+            eq(familyRequests.kind, 'card'),
+            eq(familyRequests.status, 'approved'),
+            gte(familyRequests.amount, g.amount),
+          ),
+        )
+        .orderBy(asc(familyRequests.amount))
+        .limit(1);
+      if (!ok) return familyDecline(g.family, `${merchant} ${spent} declined: ${g.message} Ask for approval in the app first.`);
+      permission = ok.id;
+    }
+    if (g.result !== 'block') family = g.family;
+  }
+  const familyId = family?.id;
+  // 6. Approve: debit the card account and record the purchase
+  const approved = await record(db, card, req, {
+    amount,
+    own,
+    charged,
+    cents,
+    merchant,
+    category,
+    result: 'APPROVED',
+    reason: `${merchant} ${spent} approved${familyId ? ' from the family budget' : ''}.`,
+    familyId,
+  });
+  if (family && approved.result === 'APPROVED') {
+    void auditFamily(db, family, card.userId, { event: 'family.card', decision: 'allowed', reason: `${merchant} ${spent} paid by card from the ${family.name} budget.` }, 'system').catch(() => undefined);
+  }
+  if (permission && approved.result === 'APPROVED') {
+    await db
+      .update(familyRequests)
+      .set({ status: 'used', transactionId: approved.authorization?.transactionId ?? null })
+      .where(eq(familyRequests.id, permission));
+  }
   // Not awaited: the card network is waiting on this decision.
   const txId = approved.authorization?.transactionId;
   if (approved.result === 'APPROVED') {
@@ -187,7 +240,17 @@ async function record(
   db: Db,
   card: CardRow,
   req: AsaRequest,
-  d: { amount: number; own: Currency; charged: Currency | null; cents: number; merchant: string; category: Category; result: string; reason: string },
+  d: {
+    amount: number;
+    own: Currency;
+    charged: Currency | null;
+    cents: number;
+    merchant: string;
+    category: Category;
+    result: string;
+    reason: string;
+    familyId?: string;
+  },
 ): Promise<AsaDecision> {
   const foreign = d.charged && d.charged !== d.own ? d.charged : null;
   const original = foreign ? { originalAmount: d.cents, originalCurrency: foreign } : {};
@@ -236,6 +299,7 @@ async function record(
         description: d.merchant,
         source: 'card',
         ...original,
+        familyId: d.familyId ?? null,
         occurredAt: new Date(),
       })
       .returning();

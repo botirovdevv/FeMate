@@ -1,11 +1,12 @@
 import multipart from '@fastify/multipart';
-import { CATEGORIES, CURRENCIES, type Category, type Currency, type Page, type Transaction } from '@femate/shared';
+import { CATEGORIES, CURRENCIES, type Category, type Currency, type Page, type PendingFamilySpend, type Transaction } from '@femate/shared';
 import { and, desc, eq, gte, lt, lte, or } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { addExpense, parsedExpense } from '../bank/expenses';
 import { transactions, users } from '../db/schema';
+import { spendFromFamily } from '../family/requests';
 import { ApiError } from '../lib/errors';
 import { decodeCursor, encodeCursor } from '../lib/paginate';
 import { toTransaction } from '../lib/serialize';
@@ -21,15 +22,18 @@ const listQuery = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   cursor: z.string().optional(),
 });
+const family = z.boolean().optional();
 const createBody = z.union([
-  z.object({ text: z.string().trim().min(1, 'Type what you spent, e.g. “taxi 20k”.').max(300) }),
+  z.object({ text: z.string().trim().min(1, 'Type what you spent, e.g. “taxi 20k”.').max(300), family }),
   z.object({
     amount: amountSchema,
     category,
     description: z.string().trim().min(1).max(200),
     currency: z.enum(CURRENCIES as [Currency, ...Currency[]]).optional(),
+    family,
   }),
 ]);
+const voiceQuery = z.object({ family: z.enum(['true', 'false']).optional() });
 
 export async function transactionRoutes(app: FastifyInstance) {
   const { db, llm } = app;
@@ -56,7 +60,13 @@ export async function transactionRoutes(app: FastifyInstance) {
     return { items: items.map(toTransaction), nextCursor: rows.length > q.limit && last ? encodeCursor(last.occurredAt, last.id) : null };
   });
 
-  app.post('/transactions', async (req, reply): Promise<Transaction> => {
+  /** A personal expense, or one paid from the family budget (Family Guard: may be blocked or sent for approval). */
+  async function record(userId: string, e: Parameters<typeof addExpense>[2], fromFamily: boolean) {
+    if (!fromFamily) return { transaction: toTransaction(await addExpense(db, userId, e)) };
+    return spendFromFamily(db, userId, e);
+  }
+
+  app.post('/transactions', async (req, reply): Promise<Transaction | PendingFamilySpend> => {
     const b = parse(createBody, req.body);
     let e: { amount: number; currency?: Currency | null; category: Category; description: string };
     if ('text' in b) {
@@ -67,15 +77,21 @@ export async function transactionRoutes(app: FastifyInstance) {
     } else {
       e = b;
     }
-    const t = await addExpense(db, req.userId, { ...e, source: 'manual' });
+    const { family: _f, ...fields } = e as typeof e & { family?: boolean };
+    const out = await record(req.userId, { ...fields, source: 'manual' }, b.family === true);
+    if ('pending' in out) {
+      reply.status(202);
+      return { pending: out.pending };
+    }
     reply.status(201);
-    return toTransaction(t);
+    return out.transaction;
   });
 
   // Voice input (Stage 6): multipart field "audio" → Groq Whisper → the same categorizer as typed text.
   await app.register(async (voice) => {
     await voice.register(multipart, { limits: { files: 1, fields: 0, fileSize: MAX_AUDIO_BYTES } });
-    voice.post('/transactions/voice', async (req, reply): Promise<{ transcript: string; transaction: Transaction }> => {
+    voice.post('/transactions/voice', async (req, reply): Promise<{ transcript: string; transaction: Transaction } | ({ transcript: string } & PendingFamilySpend)> => {
+      const q = parse(voiceQuery, req.query);
       if (!app.stt) throw new ApiError(503, 'STT_UNAVAILABLE', 'Voice input is off on the server right now. Type the expense instead.');
       if (!req.isMultipart()) throw new ApiError(400, 'INVALID_ARGS', 'Send the recording as multipart field “audio”.');
       const file = await req.file();
@@ -94,9 +110,13 @@ export async function transactionRoutes(app: FastifyInstance) {
       if (!c.amount || c.amount <= 0) {
         throw new ApiError(400, 'INVALID_ARGS', `I heard “${transcript.slice(0, 120)}” but no amount. Try again, like “taxi 20000”.`);
       }
-      const t = await addExpense(db, req.userId, { ...(await parsedExpense(db, req.userId, { ...c, amount: c.amount })), source: 'voice' });
+      const out = await record(req.userId, { ...(await parsedExpense(db, req.userId, { ...c, amount: c.amount })), source: 'voice' }, q.family === 'true');
+      if ('pending' in out) {
+        reply.status(202);
+        return { transcript, pending: out.pending };
+      }
       reply.status(201);
-      return { transcript, transaction: toTransaction(t) };
+      return { transcript, transaction: out.transaction };
     });
   });
 }

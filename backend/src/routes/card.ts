@@ -8,12 +8,13 @@ import { userCurrency } from '../bank/currency';
 import { decideAuthorization, issueCard, networkName, userCard } from '../card/cards';
 import type { CardIssuer } from '../card/lithic';
 import { cardAuthorizations, cards } from '../db/schema';
+import { membershipOf } from '../family/family';
 import { ApiError } from '../lib/errors';
 import { newId } from '../lib/ids';
 import { toCardAuthorization, toPaymentCard } from '../lib/serialize';
 import { amountSchema, parse } from '../lib/validate';
 
-const patchBody = z.object({ frozen: z.boolean().optional(), blockOverBudget: z.boolean().optional() });
+const patchBody = z.object({ frozen: z.boolean().optional(), blockOverBudget: z.boolean().optional(), payFromFamily: z.boolean().optional() });
 const simulateBody = z.object({
   amount: amountSchema,
   merchant: z.string().trim().min(1).max(40),
@@ -58,16 +59,26 @@ export async function cardRoutes(app: FastifyInstance) {
   app.patch('/card', async (req): Promise<PaymentCard> => {
     const b = parse(patchBody, req.body);
     const c = await myCard(req.userId);
+    if (b.payFromFamily && !(await membershipOf(db, req.userId))) {
+      throw new ApiError(409, 'NOT_IN_FAMILY', 'Join or create a family before paying from a family budget.');
+    }
     if (b.frozen !== undefined && b.frozen !== c.frozen) await issuer().setPaused(c.lithicToken, b.frozen);
     const [row] = await db
       .update(cards)
-      .set({ ...(b.frozen !== undefined ? { frozen: b.frozen } : {}), ...(b.blockOverBudget !== undefined ? { blockOverBudget: b.blockOverBudget } : {}) })
+      .set({
+        ...(b.frozen !== undefined ? { frozen: b.frozen } : {}),
+        ...(b.blockOverBudget !== undefined ? { blockOverBudget: b.blockOverBudget } : {}),
+        ...(b.payFromFamily !== undefined ? { payFromFamily: b.payFromFamily } : {}),
+      })
       .where(eq(cards.id, c.id))
       .returning();
     const changes = [
       b.frozen !== undefined && b.frozen !== c.frozen ? (b.frozen ? 'frozen' : 'unfrozen') : null,
       b.blockOverBudget !== undefined && b.blockOverBudget !== c.blockOverBudget
         ? `over-budget purchases ${b.blockOverBudget ? 'blocked' : 'allowed'}`
+        : null,
+      b.payFromFamily !== undefined && b.payFromFamily !== c.payFromFamily
+        ? `purchases paid from the ${b.payFromFamily ? 'family' : 'personal'} budget`
         : null,
     ].filter(Boolean);
     if (changes.length) {

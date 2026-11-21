@@ -17,6 +17,7 @@ import { auditRoutes } from './routes/audit';
 import { authRoutes } from './routes/auth';
 import { bankRoutes } from './routes/bank';
 import { cardRoutes } from './routes/card';
+import { familyRoutes } from './routes/family';
 import { lithicRoutes } from './routes/lithic';
 import { meRoutes } from './routes/me';
 import { permissionRoutes } from './routes/permissions';
@@ -127,7 +128,7 @@ export async function buildApp({ db, config, llm, stt, cards, logger = false }: 
       await api.register(lithicRoutes);
       await api.register(async (priv) => {
         priv.addHook('onRequest', authenticate);
-        for (const routes of [meRoutes, bankRoutes, cardRoutes, transactionRoutes, summaryRoutes, agentRoutes, permissionRoutes, auditRoutes, telegramRoutes]) {
+        for (const routes of [meRoutes, bankRoutes, cardRoutes, transactionRoutes, summaryRoutes, agentRoutes, permissionRoutes, auditRoutes, telegramRoutes, familyRoutes]) {
           await priv.register(routes);
         }
       });

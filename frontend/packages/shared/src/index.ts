@@ -53,6 +53,8 @@ export interface Transaction {
   occurredAt: string;
   /** Set when the expense was entered in another currency and converted. */
   original?: { amount: number; currency: Currency };
+  /** Set when it was paid from the family budget. */
+  familyId?: string;
 }
 
 export interface DailySummary {
@@ -116,6 +118,8 @@ export interface PaymentCard {
   blockOverBudget: boolean;
   /** The account purchases are paid from (the user's card account). */
   accountId: string;
+  /** Purchases count against the family budget and its approval limit. */
+  payFromFamily: boolean;
   createdAt: string;
 }
 
@@ -151,7 +155,7 @@ export interface CardAuthorization {
   createdAt: string;
 }
 
-export type UpdateCardBody = Partial<Pick<PaymentCard, 'frozen' | 'blockOverBudget'>>;
+export type UpdateCardBody = Partial<Pick<PaymentCard, 'frozen' | 'blockOverBudget' | 'payFromFamily'>>;
 
 /** Sandbox only: `amount` in the user's currency, sent to the card network in USD. */
 export interface SimulatePurchaseBody {
@@ -224,7 +228,15 @@ export interface MoneyResponse {
 }
 
 /** `currency` defaults to the user's; another one is converted, and the entered amount kept as `original`. */
-export type CreateTransactionBody = { text: string } | { amount: number; category: Category; description: string; currency?: Currency };
+export type CreateTransactionBody = ({ text: string } | { amount: number; category: Category; description: string; currency?: Currency }) & {
+  /** Pay from the family budget: checked by the Family Guard, may need the manager's approval. */
+  family?: boolean;
+};
+
+/** POST /transactions with `family: true` over the approval limit answers 202 with the request sent to the manager. */
+export interface PendingFamilySpend {
+  pending: FamilyRequest;
+}
 
 export interface Page<T> {
   items: T[];
@@ -309,7 +321,10 @@ export type PolicyErrorCode =
   | 'TARGET_NOT_ALLOWED'
   | 'PER_ACTION_LIMIT'
   | 'DAILY_LIMIT'
-  | 'INSUFFICIENT_FUNDS';
+  | 'INSUFFICIENT_FUNDS'
+  | 'NOT_IN_FAMILY'
+  | 'FAMILY_BUDGET_EXCEEDED'
+  | 'FAMILY_APPROVAL_REQUIRED';
 
 export interface ApiErrorBody {
   error: { code: string; message: string };
@@ -408,3 +423,81 @@ export function formatMoney(minor: number, c: Currency): string {
 
 // Named, not `export *`: Node's CommonJS interop (tsx in the API) only sees names listed here.
 export { categorize, currencyOf, parseAmount, parseEnglishNumber, parseUzbekNumber } from './categorize';
+
+// Family budget: one manager (a parent) sets a shared monthly budget and an approval limit; members join with a code.
+// Only spends marked "from the family budget" count against it. Members see the totals; the manager also sees each member's.
+
+export type FamilyRole = 'manager' | 'member';
+/** 'expense': a family expense to record; 'card': permission for a family card purchase up to `amount`. */
+export type FamilyRequestKind = 'expense' | 'card';
+export type FamilyRequestStatus = 'pending' | 'approved' | 'rejected' | 'used' | 'expired';
+
+export interface Family {
+  id: string;
+  name: string;
+  /** All family amounts are in this currency. */
+  currency: Currency;
+  monthlyBudget: number;
+  approvalThreshold: number;
+  managerName: string;
+  createdAt: string;
+}
+
+export interface FamilyBudget {
+  limit: number;
+  spent: number;
+  remaining: number;
+}
+
+export interface FamilyMemberTotal {
+  userId: string;
+  name: string;
+  role: FamilyRole;
+  /** Family spend this month. */
+  spent: number;
+  joinedAt: string;
+}
+
+export interface FamilyRequest {
+  id: string;
+  kind: FamilyRequestKind;
+  amount: number;
+  category: Category;
+  description: string;
+  status: FamilyRequestStatus;
+  /** Who asked (shown to the manager). */
+  memberName: string;
+  mine: boolean;
+  expiresAt: string;
+  createdAt: string;
+  decidedAt?: string;
+}
+
+export interface FamilyOverview {
+  family: Family;
+  role: FamilyRole;
+  budget: FamilyBudget;
+  memberCount: number;
+  /** Manager only. */
+  members?: FamilyMemberTotal[];
+  /** Manager: every member's recent requests; member: their own. */
+  requests: FamilyRequest[];
+}
+
+export interface CreateFamilyBody {
+  name: string;
+  monthlyBudget: number;
+  approvalThreshold: number;
+}
+
+export type UpdateFamilyBody = Partial<CreateFamilyBody>;
+
+export interface FamilyInvite {
+  code: string;
+  expiresAt: string;
+}
+
+export interface FamilyCardRequestBody {
+  amount: number;
+  description: string;
+}
