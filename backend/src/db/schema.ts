@@ -12,6 +12,7 @@ import type {
   TransactionSource,
   VoiceLanguage,
 } from '@femate/shared';
+import type { Lang } from '../i18n';
 import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow();
@@ -31,6 +32,8 @@ export const users = pgTable('users', {
   reportTime: text('report_time').notNull().default('21:00'),
   currency: text('currency').$type<Currency>().notNull().default('UZS'),
   voiceLanguage: text('voice_language').$type<VoiceLanguage>().notNull().default('auto'),
+  // App language (uz | ru | en), for text sent without a request: pushes, Telegram, the daily report.
+  language: text('language').$type<Lang>().notNull().default('en'),
   telegramChatId: text('telegram_chat_id'),
   expoPushToken: text('expo_push_token'),
   createdAt: createdAt(),

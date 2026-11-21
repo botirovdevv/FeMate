@@ -11,6 +11,8 @@ import { auditFamily, checkFamilySpend, expireRequests, type FamilyRow } from '.
 import { ApiError } from '../lib/errors';
 import { newId } from '../lib/ids';
 import { checkSpendingAlerts } from '../notify/spendingAlerts';
+import { categoryName, render, type Msg } from '../i18n';
+import { userLang } from '../i18n/user';
 import { dayStart, tashkentDate } from '../lib/time';
 import type { CardIssuer } from './lithic';
 
@@ -52,7 +54,9 @@ export async function issueCard(db: Db, issuer: CardIssuer, userId: string): Pro
     actor: 'user',
     event: 'card.issue',
     decision: 'info',
-    reason: `${networkName(issued.network)} virtual card ·· ${issued.lastFour} issued${issuer.sandbox ? ' (sandbox)' : ''}. Purchases are paid from ${account.name}.`,
+    reason: issuer.sandbox
+      ? { key: '{network} virtual card ·· {last4} issued (sandbox). Purchases are paid from {account}.', params: { network: networkName(issued.network), last4: issued.lastFour, account: account.name } }
+      : { key: '{network} virtual card ·· {last4} issued. Purchases are paid from {account}.', params: { network: networkName(issued.network), last4: issued.lastFour, account: account.name } },
   });
   return card!;
 }
@@ -133,14 +137,18 @@ export async function decideAuthorization(db: Db, req: AsaRequest): Promise<AsaD
   const fmt = (n: number) => formatMoney(n, own);
   const spent = charged && charged !== own ? `${fmt(amount)} (${formatMoney(cents, charged)})` : fmt(amount);
 
+  // Decisions are stored and shown in the card owner's language.
+  const lang = await userLang(db, card.userId);
+  const say = (key: string, params?: Msg['params']) => render({ key, params }, lang);
   const decline = async (result: string, reason: string) => record(db, card, req, { amount, own, charged, cents, merchant, category, result, reason });
 
   // 1. Amount the server can understand
-  if (!charged || cents <= 0) return decline('UNAUTHORIZED_MERCHANT', `${merchant}: unsupported charge (${cents} ${code}).`);
+  if (!charged || cents <= 0) return decline('UNAUTHORIZED_MERCHANT', say('{merchant}: unsupported charge ({charge}).', { merchant, charge: `${cents} ${code}` }));
   // 2. Frozen card
-  if (card.frozen) return decline('CARD_PAUSED', `${merchant} ${spent} declined: your card is frozen.`);
+  if (card.frozen) return decline('CARD_PAUSED', say('{merchant} {spent} declined: your card is frozen.', { merchant, spent }));
   // 3. Funds
-  if (account.balance < amount) return decline('INSUFFICIENT_FUNDS', `${merchant} ${spent} declined: ${account.name} has ${fmt(account.balance)}.`);
+  if (account.balance < amount)
+    return decline('INSUFFICIENT_FUNDS', say('{merchant} {spent} declined: {account} has {balance}.', { merchant, spent, account: account.name, balance: fmt(account.balance) }));
   // 4. Category budget for this month
   if (card.blockOverBudget) {
     const [b] = await db
@@ -152,7 +160,13 @@ export async function decideAuthorization(db: Db, req: AsaRequest): Promise<AsaD
       if (used + amount > b.monthlyLimit) {
         return decline(
           'VELOCITY_EXCEEDED',
-          `${merchant} ${spent} declined: ${category} would reach ${fmt(used + amount)} of your ${fmt(b.monthlyLimit)} monthly budget.`,
+          say('{merchant} {spent} declined: {category} would reach {total} of your {limit} monthly budget.', {
+            merchant,
+            spent,
+            category: categoryName(category, lang),
+            total: fmt(used + amount),
+            limit: fmt(b.monthlyLimit),
+          }),
         );
       }
     }
@@ -163,11 +177,12 @@ export async function decideAuthorization(db: Db, req: AsaRequest): Promise<AsaD
   let permission: string | undefined;
   if (card.payFromFamily) {
     const g = await checkFamilySpend(db, card.userId, amount);
-    const familyDecline = (family: FamilyRow, reason: string) => {
+    const familyDecline = (family: FamilyRow, reason: Msg) => {
       void auditFamily(db, family, card.userId, { event: 'family.card', decision: 'blocked', reason }, 'system').catch(() => undefined);
-      return decline('VELOCITY_EXCEEDED', reason);
+      return decline('VELOCITY_EXCEEDED', render(reason, lang));
     };
-    if (g.result === 'block' && g.family) return familyDecline(g.family, `${merchant} ${spent} declined: ${g.message}`);
+    if (g.result === 'block' && g.family)
+      return familyDecline(g.family, { key: '{merchant} {spent} declined: {reason}', params: { merchant, spent, reason: g.message } });
     if (g.result === 'approval') {
       await expireRequests(db, g.family.id);
       const [ok] = await db
@@ -184,7 +199,11 @@ export async function decideAuthorization(db: Db, req: AsaRequest): Promise<AsaD
         )
         .orderBy(asc(familyRequests.amount))
         .limit(1);
-      if (!ok) return familyDecline(g.family, `${merchant} ${spent} declined: ${g.message} Ask for approval in the app first.`);
+      if (!ok)
+        return familyDecline(g.family, {
+          key: '{merchant} {spent} declined: {reason} Ask for approval in the app first.',
+          params: { merchant, spent, reason: g.message },
+        });
       permission = ok.id;
     }
     if (g.result !== 'block') family = g.family;
@@ -199,11 +218,11 @@ export async function decideAuthorization(db: Db, req: AsaRequest): Promise<AsaD
     merchant,
     category,
     result: 'APPROVED',
-    reason: `${merchant} ${spent} approved${familyId ? ' from the family budget' : ''}.`,
+    reason: familyId ? say('{merchant} {spent} approved from the family budget.', { merchant, spent }) : say('{merchant} {spent} approved.', { merchant, spent }),
     familyId,
   });
   if (family && approved.result === 'APPROVED') {
-    void auditFamily(db, family, card.userId, { event: 'family.card', decision: 'allowed', reason: `${merchant} ${spent} paid by card from the ${family.name} budget.` }, 'system').catch(() => undefined);
+    void auditFamily(db, family, card.userId, { event: 'family.card', decision: 'allowed', reason: { key: '{merchant} {spent} paid by card from the {family} budget.', params: { merchant, spent, family: family.name } } }, 'system').catch(() => undefined);
   }
   if (permission && approved.result === 'APPROVED') {
     await db
@@ -254,6 +273,7 @@ async function record(
 ): Promise<AsaDecision> {
   const foreign = d.charged && d.charged !== d.own ? d.charged : null;
   const original = foreign ? { originalAmount: d.cents, originalCurrency: foreign } : {};
+  const lang = await userLang(db, card.userId); // read before the transaction (one connection in tests)
   const outcome = await db.transaction(async (tx) => {
     const [auth] = await tx
       .insert(cardAuthorizations)
@@ -282,7 +302,7 @@ async function record(
     if (debited.length === 0) {
       const [declined] = await tx
         .update(cardAuthorizations)
-        .set({ result: 'INSUFFICIENT_FUNDS', reason: `${d.merchant} declined: not enough money on the card.` })
+        .set({ result: 'INSUFFICIENT_FUNDS', reason: render({ key: '{merchant} declined: not enough money on the card.', params: { merchant: d.merchant } }, lang) })
         .where(eq(cardAuthorizations.id, auth.id))
         .returning();
       return declined!;

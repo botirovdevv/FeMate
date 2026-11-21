@@ -44,7 +44,11 @@ export async function bankRoutes(app: FastifyInstance) {
       actor: 'user',
       event: 'bank.connect',
       decision: 'info',
-      reason: `Sandbox Bank ${fresh ? 'connected' : 'consent updated'} at ${b.level} with ${scopes.length ? scopes.join(', ') : 'no scopes'}.`,
+      reason: {
+        key: fresh ? 'Sandbox Bank connected at {level} with {scopes}.' : 'Sandbox Bank consent updated at {level} with {scopes}.',
+        params: { level: b.level, scopes: scopes.length ? scopes.join(', ') : 'no scopes' },
+      },
+      // msg('no scopes') msg('Sandbox Bank consent updated at {level} with {scopes}.')
       details: { scopes, level: b.level, ...limits },
       level: b.level,
     });

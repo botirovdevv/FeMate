@@ -3,15 +3,16 @@ import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import { createProvider } from './agent/llm';
 import { createLithic, type CardIssuer } from './card/lithic';
 import type { LlmProvider } from './agent/llm/provider';
 import type { Config } from './config';
 import type { Db } from './db/client';
-import { users } from './db/schema';
+import { recommendations, users } from './db/schema';
 import { ApiError } from './lib/errors';
+import { parseLang, render, t, type Lang } from './i18n';
 import { agentRoutes } from './routes/agent';
 import { auditRoutes } from './routes/audit';
 import { authRoutes } from './routes/auth';
@@ -38,6 +39,8 @@ declare module 'fastify' {
   }
   interface FastifyRequest {
     userId: string;
+    /** From Accept-Language (uz, ru or en); English when the client names none of them. */
+    lang: Lang;
   }
 }
 
@@ -65,6 +68,10 @@ export async function buildApp({ db, config, llm, stt, cards, logger = false }: 
   app.decorate('cards', cards === undefined ? createLithic(config.LITHIC_API_KEY, config.LITHIC_ENV) : cards);
   app.decorate('config', config);
   app.decorateRequest('userId', '');
+  app.decorateRequest('lang', 'en');
+  app.addHook('onRequest', async (req) => {
+    req.lang = parseLang(req.headers['accept-language']) ?? 'en';
+  });
   // POST endpoints without a body (approve, kill switch) must not fail when a client still sends a JSON content type.
   app.removeContentTypeParser('application/json');
   app.addContentTypeParser('application/json', { parseAs: 'string' }, (_req, body, done) => {
@@ -90,24 +97,27 @@ export async function buildApp({ db, config, llm, stt, cards, logger = false }: 
       const cf = req.headers['cf-connecting-ip'];
       return (Array.isArray(cf) ? cf[0] : cf) ?? req.ip;
     },
-    errorResponseBuilder: (_req, ctx) => new ApiError(429, 'RATE_LIMITED', `Too many requests. Try again in ${ctx.after}.`),
+    errorResponseBuilder: (_req, ctx) => new ApiError(429, 'RATE_LIMITED', 'Too many requests. Try again in {after}.', { after: ctx.after }),
   });
 
   app.setErrorHandler((err: unknown, req, reply) => {
-    if (err instanceof ApiError) return reply.status(err.statusCode).send({ error: { code: err.code, message: err.message } });
+    if (err instanceof ApiError) {
+      // String values that are themselves keys ("User" in "{what} not found.") are translated too.
+      return reply.status(err.statusCode).send({ error: { code: err.code, message: render({ key: err.message, params: err.params }, req.lang) } });
+    }
     const e = err as { statusCode?: number; code?: string; message?: string; cause?: { code?: string } };
     // 22003 = numeric value out of range: a total grew past the int4 money columns.
     if (e.code === '22003' || e.cause?.code === '22003') {
-      return reply.status(400).send({ error: { code: 'AMOUNT_TOO_LARGE', message: 'That amount is too large.' } });
+      return reply.status(400).send({ error: { code: 'AMOUNT_TOO_LARGE', message: t('That amount is too large.', undefined, req.lang) } });
     }
     if (e.statusCode && e.statusCode < 500) {
       return reply.status(e.statusCode).send({ error: { code: e.code ?? `HTTP_${e.statusCode}`, message: e.message ?? 'Bad request.' } });
     }
     req.log.error(err);
-    return reply.status(500).send({ error: { code: 'INTERNAL', message: 'Something went wrong on our side. Try again.' } });
+    return reply.status(500).send({ error: { code: 'INTERNAL', message: t('Something went wrong on our side. Try again.', undefined, req.lang) } });
   });
   app.setNotFoundHandler((req, reply) =>
-    reply.status(404).send({ error: { code: 'NOT_FOUND', message: `No route ${req.method} ${req.url}.` } }),
+    reply.status(404).send({ error: { code: 'NOT_FOUND', message: t('No route {route}.', { route: `${req.method} ${req.url}` }, req.lang) } }),
   );
 
   async function authenticate(req: FastifyRequest, _reply: FastifyReply) {
@@ -116,9 +126,16 @@ export async function buildApp({ db, config, llm, stt, cards, logger = false }: 
     } catch {
       throw new ApiError(401, 'UNAUTHORIZED', 'Sign in to continue.');
     }
-    const [u] = await db.select({ id: users.id }).from(users).where(eq(users.id, req.user.sub));
+    const [u] = await db.select({ id: users.id, language: users.language }).from(users).where(eq(users.id, req.user.sub));
     if (!u) throw new ApiError(401, 'UNAUTHORIZED', 'Your account no longer exists. Sign in again.');
     req.userId = u.id;
+    // The app sends its language with every request; remember it for pushes, Telegram and the daily report.
+    const asked = parseLang(req.headers['accept-language']);
+    if (asked && asked !== u.language) {
+      await db.update(users).set({ language: asked }).where(eq(users.id, u.id));
+      // Untouched suggestions are text in the old language: they are rebuilt on the next read.
+      await db.delete(recommendations).where(and(eq(recommendations.userId, u.id), eq(recommendations.status, 'new')));
+    }
   }
 
   await app.register(

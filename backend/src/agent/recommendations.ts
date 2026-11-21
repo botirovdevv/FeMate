@@ -14,6 +14,8 @@ import { toRecommendation } from '../lib/serialize';
 import { addDays, dayStart, daysInMonth, tashkentDate } from '../lib/time';
 import { proposeAction } from '../policy/actions';
 import { BUS_FARE, whatIf } from '../rules/whatIf';
+import { t, type Lang, type Params } from '../i18n';
+import { userLang } from '../i18n/user';
 
 type NewRec = Omit<typeof recommendations.$inferInsert, 'id' | 'userId'>;
 
@@ -22,9 +24,11 @@ export function buildRecommendations(
   spends: { amount: number; category: string; description: string; day: string }[],
   monthDays: number,
   currency: Currency = 'UZS',
+  lang: Lang = 'en',
 ): NewRec[] {
   const recs: NewRec[] = [];
   const fmt = (n: number) => money(n, currency);
+  const say = (key: string, params?: Params) => t(key, params, lang);
   const busTrip = fromUzs(2 * BUS_FARE, currency);
 
   // 1. Taxi -> bus on even days.
@@ -37,16 +41,22 @@ export function buildRecommendations(
     const { monthlySaving } = whatIf({ currentCostPerDay: perDay, alternativeCostPerDay: busTrip, daysPerMonth: busDays });
     if (monthlySaving > 0)
       recs.push({
-        title: 'Take the bus on even days',
-        body: `You take a taxi on ${rideDays} of the last 14 days, about ${fmt(perDay)} a day. On ${busDays} even days a month, a ${fmt(busTrip)} bus round trip saves ${fmt(perDay - busTrip)} each day.`,
+        title: say('Take the bus on even days'),
+        body: say('You take a taxi on {days} of the last 14 days, about {perDay} a day. On {busDays} even days a month, a {bus} bus round trip saves {saving} each day.', {
+          days: rideDays,
+          perDay: fmt(perDay),
+          busDays,
+          bus: fmt(busTrip),
+          saving: fmt(perDay - busTrip),
+        }),
         monthlySaving,
       });
   }
 
   // 2/3. Category caps for food and shopping when the month is on pace to run high.
-  for (const [category, label, min] of [
-    ['food', 'food', 300_000],
-    ['shopping', 'shopping', 150_000],
+  for (const [category, min] of [
+    ['food', 300_000],
+    ['shopping', 150_000],
   ] as const) {
     const spent = spends.filter((t) => t.category === category).reduce((a, t) => a + t.amount, 0);
     const projected = Math.round((spent / 14) * monthDays);
@@ -55,8 +65,11 @@ export function buildRecommendations(
     const cap = Math.floor((projected * 0.85) / step) * step;
     if (cap <= 0 || projected - cap <= 0) continue;
     recs.push({
-      title: `Cap ${label} at ${fmt(cap)} a month`,
-      body: `${label[0]!.toUpperCase()}${label.slice(1)} is on pace for about ${fmt(projected)} this month. A ${fmt(cap)} cap keeps you on track; FeMate will warn you at 80%.`,
+      title: category === 'food' ? say('Cap food at {amount} a month', { amount: fmt(cap) }) : say('Cap shopping at {amount} a month', { amount: fmt(cap) }),
+      body:
+        category === 'food'
+          ? say('Food is on pace for about {projected} this month. A {cap} cap keeps you on track; FeMate will warn you at 80%.', { projected: fmt(projected), cap: fmt(cap) })
+          : say('Shopping is on pace for about {projected} this month. A {cap} cap keeps you on track; FeMate will warn you at 80%.', { projected: fmt(projected), cap: fmt(cap) }),
       monthlySaving: projected - cap,
       actionType: 'set_budget',
       actionPayload: { category, monthlyLimit: cap },
@@ -83,6 +96,7 @@ export async function listRecommendations(db: Db, userId: string): Promise<Recom
     rows.map((t) => ({ amount: t.amount, category: t.category, description: t.description, day: tashkentDate(t.occurredAt) })),
     daysInMonth(today),
     await userCurrency(db, userId),
+    await userLang(db, userId),
   );
   // Replace yesterday's untouched suggestions; applied ones stay as history.
   await db.delete(recommendations).where(and(eq(recommendations.userId, userId), eq(recommendations.status, 'new')));
@@ -100,7 +114,7 @@ export async function applyRecommendation(db: Db, userId: string, id: string): P
   // Applying twice (double tap, second device) must not propose the same transfer twice.
   if (rec.status === 'applied') return {};
   await db.update(recommendations).set({ status: 'applied' }).where(eq(recommendations.id, id));
-  await audit(db, userId, { actor: 'user', event: 'recommendation.apply', decision: 'info', reason: `Applied: ${rec.title}.`, details: { recommendationId: id } });
+  await audit(db, userId, { actor: 'user', event: 'recommendation.apply', decision: 'info', reason: { key: 'Applied: {title}.', params: { title: rec.title } }, details: { recommendationId: id } });
   if (rec.actionType && rec.actionPayload) {
     const { action } = await proposeAction(db, userId, rec.actionType, rec.actionPayload, { actor: 'user', reason: rec.title });
     return { action };

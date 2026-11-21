@@ -48,7 +48,7 @@ export function createGroqStt(apiKey: string, model = 'whisper-large-v3'): SttPr
       if (!res.ok) throw new ApiError(502, 'STT_FAILED', 'The speech service didn’t answer. Try again, or type the expense.');
       const body = (await res.json()) as { text?: string; duration?: number };
       if ((body.duration ?? 0) > MAX_AUDIO_SECONDS + 1) {
-        throw new ApiError(400, 'AUDIO_TOO_LONG', `Keep it under ${MAX_AUDIO_SECONDS} seconds, like “taxi 20000”.`);
+        throw new ApiError(400, 'AUDIO_TOO_LONG', 'Keep it under {n} seconds, like “taxi 20000”.', { n: MAX_AUDIO_SECONDS });
       }
       return (body.text ?? '').trim();
     },

@@ -12,6 +12,8 @@ import { parse } from '../lib/validate';
 import { clampLimits, LEVEL_RANK } from '../policy/limits';
 import { loadPermissions } from '../policy/policyGuard';
 import { levelSchema, scopeSchema } from './bank';
+import { tn } from '../i18n';
+import { userLang } from '../i18n/user';
 
 const putBody = z.object({
   level: levelSchema.optional(),
@@ -50,7 +52,16 @@ export async function permissionRoutes(app: FastifyInstance) {
       actor: 'user',
       event: 'permissions.update',
       decision: 'info',
-      reason: `${reEnable ? 'Agent re-enabled' : agentEnabled ? 'Permissions updated' : 'Permissions updated (agent still stopped)'}: ${level}, ${money(p.perActionLimit, currency)} per action, ${money(p.dailyLimit, currency)} a day${capped ? ' (capped at the system maximum)' : ''}.`,
+      reason: {
+        key: capped ? '{what}: {level}, {perAction} per action, {daily} a day (capped at the system maximum).' : '{what}: {level}, {perAction} per action, {daily} a day.',
+        params: {
+          what: reEnable ? 'Agent re-enabled' : agentEnabled ? 'Permissions updated' : 'Permissions updated (agent still stopped)',
+          level,
+          perAction: money(p.perActionLimit, currency),
+          daily: money(p.dailyLimit, currency),
+        },
+      },
+      // msg('Agent re-enabled') msg('Permissions updated') msg('Permissions updated (agent still stopped)') msg('{what}: {level}, {perAction} per action, {daily} a day.')
       details: { before: cur, after: p },
       level,
     });
@@ -76,7 +87,7 @@ export async function permissionRoutes(app: FastifyInstance) {
       actor: 'user',
       event: 'permissions.kill_switch',
       decision: 'info',
-      reason: `Agent disabled. ${rejected} pending action${rejected === 1 ? '' : 's'} rejected.`,
+      reason: tn('Agent disabled. {n} pending action rejected.|Agent disabled. {n} pending actions rejected.', rejected, undefined, await userLang(db, req.userId)),
       level: 'L1',
     });
     return row ? toPermissions(row) : loadPermissions(db, req.userId);

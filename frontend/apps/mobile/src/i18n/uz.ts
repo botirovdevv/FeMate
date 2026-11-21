@@ -590,4 +590,8 @@ export const uz: Record<string, string> = {
   '{n} week ago|{n} weeks ago': '{n} hafta oldin',
   'Last month': 'O‘tgan oy',
   '{n} month ago|{n} months ago': '{n} oy oldin',
+  Cash: 'Naqd',
+  card: 'karta',
+  cash: 'naqd',
+  savings: 'jamg‘arma',
 };

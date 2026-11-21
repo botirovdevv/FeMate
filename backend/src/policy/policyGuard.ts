@@ -11,6 +11,8 @@ import { permissions } from '../db/schema';
 import { maskCards, money as formatMoney } from '../lib/format';
 import { toPermissions } from '../lib/serialize';
 import { LEVEL_RANK } from './limits';
+import { t, type Params } from '../i18n';
+import { userLang } from '../i18n/user';
 
 const category = z.enum(CATEGORIES as [Category, ...Category[]]);
 const money = z.number().int().positive();
@@ -78,51 +80,57 @@ export async function loadPermissions(db: Db, userId: string): Promise<Permissio
 }
 
 export async function checkPolicy<T extends ToolName>(db: Db, userId: string, tool: T, rawArgs: unknown): Promise<Decision<T>> {
-  const perms = await loadPermissions(db, userId);
+  const [perms, lang] = await Promise.all([loadPermissions(db, userId), userLang(db, userId)]);
   const rule = TOOL_RULES[tool] as { minLevel: PermissionLevel; scope?: Scope; args: z.ZodType };
-  const block = (code: PolicyErrorCode, message: string): Decision<T> => ({ allowed: false, perms, code, message });
+  // Messages are in the user's language: they reach the chat, the action card and the audit log.
+  const block = (code: PolicyErrorCode, key: string, params?: Params): Decision<T> => ({ allowed: false, perms, code, message: t(key, params, lang) });
 
   // 1. Kill switch
   if (!perms.agentEnabled) return block('KILL_SWITCH_ACTIVE', 'The agent is stopped by the kill switch.');
   // 2. Level
   if (LEVEL_RANK[perms.level] < LEVEL_RANK[rule.minLevel])
-    return block('INSUFFICIENT_LEVEL', `${tool} needs level ${rule.minLevel}; you are at ${perms.level}.`);
+    return block('INSUFFICIENT_LEVEL', '{tool} needs level {need}; you are at {level}.', { tool, need: rule.minLevel, level: perms.level });
   // 3. Scope
-  if (rule.scope && !perms.scopes.includes(rule.scope)) return block('MISSING_SCOPE', `You haven't granted the ${rule.scope} scope.`);
+  if (rule.scope && !perms.scopes.includes(rule.scope)) return block('MISSING_SCOPE', 'You haven’t granted the {scope} scope.', { scope: rule.scope });
   // 4. Arguments
   const parsed = rule.args.safeParse(rawArgs ?? {});
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
-    return block('INVALID_ARGS', `Invalid arguments: ${issue ? `${issue.path.join('.') || 'args'} ${issue.message}` : 'rejected'}.`);
+    return block('INVALID_ARGS', 'Invalid arguments: {detail}.', { detail: issue ? `${issue.path.join('.') || 'args'} ${issue.message}` : 'rejected' });
   }
   const args = parsed.data as ToolArgs<T>;
   const mode = (ACTION_TOOLS as readonly string[]).includes(tool) && perms.level !== 'L3' ? 'confirm' : 'execute';
 
   if (tool !== 'transfer_to_savings') return { allowed: true, perms, args, mode };
-  const t = args as ToolArgs<'transfer_to_savings'>;
+  const a = args as ToolArgs<'transfer_to_savings'>;
 
   // 5. Whitelist: only this user's own card -> this user's own savings
   const [card, savings] = await Promise.all([accountOfType(db, userId, 'card'), accountOfType(db, userId, 'savings')]);
-  const fromAccountId = t.fromAccountId ?? card?.id;
-  const toAccountId = t.toAccountId ?? savings?.id;
+  const fromAccountId = a.fromAccountId ?? card?.id;
+  const toAccountId = a.toAccountId ?? savings?.id;
   if (!card || !savings || fromAccountId !== card.id || toAccountId !== savings.id) {
-    const target = t.toAccountId && t.toAccountId !== savings?.id ? `${maskCards(t.toAccountId)} is not your savings account. ` : '';
-    return block('TARGET_NOT_ALLOWED', `${target}Money can only move from your card to your own savings.`);
+    if (a.toAccountId && a.toAccountId !== savings?.id) {
+      return block('TARGET_NOT_ALLOWED', '{target} is not your savings account. Money can only move from your card to your own savings.', {
+        target: maskCards(a.toAccountId),
+      });
+    }
+    return block('TARGET_NOT_ALLOWED', 'Money can only move from your card to your own savings.');
   }
   const currency = await userCurrency(db, userId);
   const fmt = (n: number) => formatMoney(n, currency);
   // 6. Per-action limit
-  if (t.amount > perms.perActionLimit)
-    return block('PER_ACTION_LIMIT', `${fmt(t.amount)} is over your ${fmt(perms.perActionLimit)} per-action limit.`);
+  if (a.amount > perms.perActionLimit)
+    return block('PER_ACTION_LIMIT', '{amount} is over your {limit} per-action limit.', { amount: fmt(a.amount), limit: fmt(perms.perActionLimit) });
   // 7. Daily limit
   const doneToday = await agentTransferredToday(db, userId);
-  if (doneToday + t.amount > perms.dailyLimit)
-    return block(
-      'DAILY_LIMIT',
-      `${fmt(doneToday)} already moved today; ${fmt(t.amount)} more would pass your ${fmt(perms.dailyLimit)} daily limit.`,
-    );
+  if (doneToday + a.amount > perms.dailyLimit)
+    return block('DAILY_LIMIT', '{done} already moved today; {amount} more would pass your {limit} daily limit.', {
+      done: fmt(doneToday),
+      amount: fmt(a.amount),
+      limit: fmt(perms.dailyLimit),
+    });
   // 8. Funds
-  if (card.balance < t.amount) return block('INSUFFICIENT_FUNDS', `Your card has ${fmt(card.balance)}, less than ${fmt(t.amount)}.`);
+  if (card.balance < a.amount) return block('INSUFFICIENT_FUNDS', 'Your card has {balance}, less than {amount}.', { balance: fmt(card.balance), amount: fmt(a.amount) });
 
   // 9. L2 -> pending for approval, L3 -> execute now
   return { allowed: true, perms, args, mode, transfer: { fromAccountId, toAccountId } };

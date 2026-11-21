@@ -52,7 +52,7 @@ export function createLithic(apiKey: string, env: 'sandbox' | 'production'): Car
     }
     const data = (await res.json().catch(() => null)) as (T & { message?: string }) | null;
     if (!res.ok) {
-      throw new ApiError(502, 'CARD_PROVIDER_FAILED', `The card provider said no${data?.message ? `: ${data.message}` : ''}. Try again.`);
+      throw new ApiError(502, 'CARD_PROVIDER_FAILED', 'The card provider said no{detail}. Try again.', { detail: data?.message ? `: ${data.message}` : '' });
     }
     return data as T;
   }

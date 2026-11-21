@@ -585,4 +585,8 @@ export const ru: Record<string, string> = {
   '{n} week ago|{n} weeks ago': '{n} неделю назад|{n} недели назад|{n} недель назад',
   'Last month': 'Прошлый месяц',
   '{n} month ago|{n} months ago': '{n} месяц назад|{n} месяца назад|{n} месяцев назад',
+  Cash: 'Наличные',
+  card: 'карта',
+  cash: 'наличные',
+  savings: 'накопления',
 };

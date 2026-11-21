@@ -108,7 +108,7 @@ export async function transactionRoutes(app: FastifyInstance) {
       if (!transcript) throw new ApiError(400, 'EMPTY_AUDIO', 'I didn’t hear anything. Try again, like “taxi 20000”.');
       const c = await llm.categorize(transcript);
       if (!c.amount || c.amount <= 0) {
-        throw new ApiError(400, 'INVALID_ARGS', `I heard “${transcript.slice(0, 120)}” but no amount. Try again, like “taxi 20000”.`);
+        throw new ApiError(400, 'INVALID_ARGS', 'I heard “{heard}” but no amount. Try again, like “taxi 20000”.', { heard: transcript.slice(0, 120) });
       }
       const out = await record(req.userId, { ...(await parsedExpense(db, req.userId, { ...c, amount: c.amount })), source: 'voice' }, q.family === 'true');
       if ('pending' in out) {

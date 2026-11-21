@@ -14,6 +14,8 @@ import { approveRequest, rejectRequest, requestCardPermission } from '../family/
 import { ApiError, notFound } from '../lib/errors';
 import { newId } from '../lib/ids';
 import { MAX_AMOUNT, amountSchema, parse } from '../lib/validate';
+import { msg, t } from '../i18n';
+import { userLang } from '../i18n/user';
 
 const INVITE_TTL_MS = 24 * 60 * 60 * 1000;
 // No 0/O or 1/I so a code read aloud or typed from a screenshot is unambiguous.
@@ -55,7 +57,10 @@ export async function familyRoutes(app: FastifyInstance) {
       actor: 'user',
       event: 'family.create',
       decision: 'info',
-      reason: `Family “${b.name}” created: ${formatMoney(b.monthlyBudget, currency)} a month, approval over ${formatMoney(b.approvalThreshold, currency)}.`,
+      reason: {
+        key: 'Family “{family}” created: {budget} a month, approval over {limit}.',
+        params: { family: b.name, budget: formatMoney(b.monthlyBudget, currency), limit: formatMoney(b.approvalThreshold, currency) },
+      },
       details: { familyId: id },
     });
     reply.status(201);
@@ -67,14 +72,18 @@ export async function familyRoutes(app: FastifyInstance) {
     const f = await requireManager(db, req.userId);
     await db.update(families).set(b).where(eq(families.id, f.id));
     const fmt = (n: number) => formatMoney(n, f.currency);
+    const lang = await userLang(db, req.userId);
     const changes = [
-      b.name !== undefined && b.name !== f.name ? `name “${b.name}”` : null,
-      b.monthlyBudget !== undefined && b.monthlyBudget !== f.monthlyBudget ? `budget ${fmt(f.monthlyBudget)} → ${fmt(b.monthlyBudget)}` : null,
+      b.name !== undefined && b.name !== f.name ? t('name “{name}”', { name: b.name }, lang) : null,
+      b.monthlyBudget !== undefined && b.monthlyBudget !== f.monthlyBudget
+        ? t('budget {from} → {to}', { from: fmt(f.monthlyBudget), to: fmt(b.monthlyBudget) }, lang)
+        : null,
       b.approvalThreshold !== undefined && b.approvalThreshold !== f.approvalThreshold
-        ? `approval limit ${fmt(f.approvalThreshold)} → ${fmt(b.approvalThreshold)}`
+        ? t('approval limit {from} → {to}', { from: fmt(f.approvalThreshold), to: fmt(b.approvalThreshold) }, lang)
         : null,
     ].filter(Boolean);
-    if (changes.length) await audit(db, req.userId, { actor: 'user', event: 'family.update', decision: 'info', reason: `Family: ${changes.join(', ')}.` });
+    if (changes.length)
+      await audit(db, req.userId, { actor: 'user', event: 'family.update', decision: 'info', reason: t('Family: {changes}.', { changes: changes.join(', ') }, lang) });
     return current(req.userId);
   });
 
@@ -87,7 +96,7 @@ export async function familyRoutes(app: FastifyInstance) {
       for (const userId of memberIds) await tx.update(cards).set({ payFromFamily: false }).where(eq(cards.userId, userId));
       await tx.delete(families).where(eq(families.id, f.id));
     });
-    await audit(db, req.userId, { actor: 'user', event: 'family.delete', decision: 'info', reason: `Family “${f.name}” deleted.` });
+    await audit(db, req.userId, { actor: 'user', event: 'family.delete', decision: 'info', reason: { key: 'Family “{family}” deleted.', params: { family: f.name } } });
     return { ok: true };
   });
 
@@ -125,7 +134,7 @@ export async function familyRoutes(app: FastifyInstance) {
     });
     const [f] = await db.select().from(families).where(eq(families.id, familyId));
     const [me] = await db.select({ name: users.name }).from(users).where(eq(users.id, req.userId));
-    if (f) await auditFamily(db, f, req.userId, { event: 'family.join', decision: 'info', reason: `${me?.name ?? 'A member'} joined “${f.name}”.` });
+    if (f) await auditFamily(db, f, req.userId, { event: 'family.join', decision: 'info', reason: { key: '{name} joined “{family}”.', params: { name: me?.name ?? msg('A member'), family: f.name } } });
     return current(req.userId);
   });
 
@@ -149,7 +158,7 @@ export async function familyRoutes(app: FastifyInstance) {
     const { family, role } = await requireMembership(db, req.userId);
     if (role === 'manager') throw new ApiError(409, 'MANAGER_CANNOT_LEAVE', 'As the manager you can’t leave. Delete the family instead.');
     await removeMember(family.id, req.userId);
-    await auditFamily(db, family, req.userId, { event: 'family.leave', decision: 'info', reason: `Left “${family.name}”.` });
+    await auditFamily(db, family, req.userId, { event: 'family.leave', decision: 'info', reason: { key: 'Left “{family}”.', params: { family: family.name } } });
     return { ok: true };
   });
 
@@ -164,7 +173,7 @@ export async function familyRoutes(app: FastifyInstance) {
       .where(and(eq(familyMembers.familyId, f.id), eq(familyMembers.userId, userId)));
     if (!m) throw notFound('Member');
     await removeMember(f.id, userId);
-    await auditFamily(db, f, userId, { event: 'family.remove', decision: 'info', reason: `${m.name} was removed from “${f.name}”.` });
+    await auditFamily(db, f, userId, { event: 'family.remove', decision: 'info', reason: { key: '{name} was removed from “{family}”.', params: { name: m.name, family: f.name } } });
     return current(req.userId);
   });
 

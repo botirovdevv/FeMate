@@ -144,7 +144,7 @@ export default function ActionSheet() {
       {isTransfer ? (
         <StatRows
           rows={[
-            { label: t('From'), value: `${card?.name ?? t('Card')} · ${formatAmount(card?.balance ?? 0, cur)}` },
+            { label: t('From'), value: `${t(card?.name ?? 'Card')} · ${formatAmount(card?.balance ?? 0, cur)}` },
             { label: t('To'), value: `${t('Savings')} · ${formatAmount(savings?.balance ?? 0, cur)}` },
             ...(left !== null && a.status === 'pending' ? [{ label: t('Expires'), value: t('in {n} min', { n: left }) }] : []),
             { label: t('Total today'), value: formatMoney(amount, cur), strong: true },

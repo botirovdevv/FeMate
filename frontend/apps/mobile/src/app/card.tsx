@@ -316,7 +316,7 @@ export default function CardScreen() {
 
           <StatRows
             rows={[
-              { label: t('Paid from'), value: funding?.name ?? t('Card') },
+              { label: t('Paid from'), value: t(funding?.name ?? 'Card') },
               { label: t('Available to spend'), value: formatMoney(funding?.balance ?? 0, cur), strong: true },
             ]}
           />

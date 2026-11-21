@@ -9,6 +9,7 @@ import type { Db } from '../db/client';
 import { families, familyMembers, familyRequests, transactions, users } from '../db/schema';
 import { ApiError } from '../lib/errors';
 import { dayStart, tashkentDate } from '../lib/time';
+import type { Msg } from '../i18n';
 
 export type FamilyRow = typeof families.$inferSelect;
 type RequestRow = typeof familyRequests.$inferSelect;
@@ -72,8 +73,8 @@ export async function familySpent(db: Db, family: FamilyRow): Promise<number> {
 
 export type GuardResult =
   | { result: 'allow'; family: FamilyRow; role: FamilyRole; amount: number }
-  | { result: 'approval'; family: FamilyRow; role: FamilyRole; amount: number; message: string }
-  | { result: 'block'; family: FamilyRow | null; code: 'NOT_IN_FAMILY' | 'INVALID_ARGS' | 'FAMILY_BUDGET_EXCEEDED'; message: string };
+  | { result: 'approval'; family: FamilyRow; role: FamilyRole; amount: number; message: Msg }
+  | { result: 'block'; family: FamilyRow | null; code: 'NOT_IN_FAMILY' | 'INVALID_ARGS' | 'FAMILY_BUDGET_EXCEEDED'; message: Msg };
 
 /**
  * Family Guard. `amount` is in the spender's own currency; the result's amount is in the family's.
@@ -82,13 +83,13 @@ export type GuardResult =
 export async function checkFamilySpend(db: Db, userId: string, amount: number, opts: { approved?: boolean } = {}): Promise<GuardResult> {
   // 1. Membership
   const m = await membershipOf(db, userId);
-  if (!m) return { result: 'block', family: null, code: 'NOT_IN_FAMILY', message: 'You are not in a family, so this can’t be paid from a family budget.' };
+  if (!m) return { result: 'block', family: null, code: 'NOT_IN_FAMILY', message: { key: 'You are not in a family, so this can’t be paid from a family budget.' } };
   const { family, role } = m;
   const fmt = (n: number) => formatMoney(n, family.currency);
   // 2. Amount
   const own = await userCurrency(db, userId);
   const famAmount = convertMoney(amount, own, family.currency);
-  if (!Number.isInteger(famAmount) || famAmount <= 0) return { result: 'block', family, code: 'INVALID_ARGS', message: 'That amount is too small.' };
+  if (!Number.isInteger(famAmount) || famAmount <= 0) return { result: 'block', family, code: 'INVALID_ARGS', message: { key: 'That amount is too small.' } };
   // 3. Budget: a spend that would pass the monthly family budget is blocked
   const spent = await familySpent(db, family);
   if (spent + famAmount > family.monthlyBudget) {
@@ -97,7 +98,7 @@ export async function checkFamilySpend(db: Db, userId: string, amount: number, o
       result: 'block',
       family,
       code: 'FAMILY_BUDGET_EXCEEDED',
-      message: `${fmt(famAmount)} is more than the ${fmt(left)} left in the ${family.name} budget this month.`,
+      message: { key: '{amount} is more than the {left} left in the {family} budget this month.', params: { amount: fmt(famAmount), left: fmt(left), family: family.name } },
     };
   }
   // 4. Approval limit: a member's spend above it waits for the manager
@@ -107,7 +108,7 @@ export async function checkFamilySpend(db: Db, userId: string, amount: number, o
       family,
       role,
       amount: famAmount,
-      message: `${fmt(famAmount)} is over the ${fmt(family.approvalThreshold)} approval limit, so it needs the manager’s OK.`,
+      message: { key: '{amount} is over the {limit} approval limit, so it needs the manager’s OK.', params: { amount: fmt(famAmount), limit: fmt(family.approvalThreshold) } },
     };
   }
   // 5. Allowed
@@ -196,7 +197,7 @@ export async function auditFamily(
   db: Db,
   family: FamilyRow,
   userId: string,
-  e: { event: string; decision: 'allowed' | 'blocked' | 'info'; reason: string; details?: Record<string, unknown> },
+  e: { event: string; decision: 'allowed' | 'blocked' | 'info'; reason: string | Msg; details?: Record<string, unknown> },
   actor: 'user' | 'system' = 'user',
 ) {
   const entry = { actor, event: e.event, decision: e.decision, reason: e.reason, details: { familyId: family.id, ...e.details } } as const;

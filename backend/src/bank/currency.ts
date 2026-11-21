@@ -92,7 +92,10 @@ export async function changeCurrency(db: Db, userId: string, to: Currency) {
     actor: 'user',
     event: 'profile.currency',
     decision: 'info',
-    reason: `Currency changed from ${from} to ${to}. Balances, history, budgets and limits were converted at ${rateText(from, to)} (fixed sandbox rate).`,
+    reason: {
+      key: 'Currency changed from {from} to {to}. Balances, history, budgets and limits were converted at {rate} (fixed sandbox rate).',
+      params: { from, to, rate: rateText(from, to) },
+    },
     details: { from, to },
   });
 }

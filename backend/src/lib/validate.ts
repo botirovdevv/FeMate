@@ -8,7 +8,8 @@ export function parse<T extends z.ZodType>(schema: T, data: unknown): z.infer<T>
   if (r.success) return r.data;
   const issue = r.error.issues[0];
   const where = issue?.path.length ? `${issue.path.join('.')}: ` : '';
-  throw new ApiError(400, 'INVALID_ARGS', `${where}${issue?.message ?? 'Invalid request.'}`);
+  // The issue text is a translation key when the schema gave a custom message.
+  throw new ApiError(400, 'INVALID_ARGS', '{where}{message}', { where, message: issue?.message ?? 'Invalid request.' });
 }
 
 /** Money columns are Postgres int4; one amount stays far below its 2 147 483 647 ceiling so sums never overflow. */

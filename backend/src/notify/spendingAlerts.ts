@@ -15,6 +15,7 @@ import { addDays } from '../lib/time';
 import { ANOMALY_FACTOR, ANOMALY_MIN_UZS, ANOMALY_WINDOW_DAYS, isAnomaly } from '../rules/anomaly';
 import { monthPlan } from '../rules/monthPlan';
 import { notifyUser } from './notify';
+import { categoryName, msg, t, type Lang, type Params } from '../i18n';
 
 export interface Alert {
   kind: 'day_over' | 'category_up' | 'anomaly';
@@ -27,10 +28,10 @@ export interface Alert {
 export const CATEGORY_UP_PCT = 30;
 
 const CATEGORY_TIP: Partial<Record<Category, string>> = {
-  food: 'Bringing lunch from home for a few days brings it back down.',
-  transport: 'Walking or taking the bus instead of a taxi brings it back down.',
-  shopping: 'A no-shopping week brings it back down.',
-  entertainment: 'A quieter week brings it back down.',
+  food: msg('Bringing lunch from home for a few days brings it back down.'),
+  transport: msg('Walking or taking the bus instead of a taxi brings it back down.'),
+  shopping: msg('A no-shopping week brings it back down.'),
+  entertainment: msg('A quieter week brings it back down.'),
 };
 
 /** Monday of the date's week, as the key for weekly alerts. */
@@ -40,23 +41,23 @@ function weekKey(date: string): string {
 }
 
 /** Pure: the alerts a month plan calls for. Exported for tests. */
-export function alertsFor(name: string, plan: MonthPlan, currency: Currency): Alert[] {
+export function alertsFor(name: string, plan: MonthPlan, currency: Currency, lang: Lang = 'en'): Alert[] {
   const fmt = (n: number) => money(n, currency);
+  const say = (key: string, params?: Params) => t(key, params, lang);
   const out: Alert[] = [];
   if (plan.dailyAllowance > 0 && plan.todaySpent > plan.dailyAllowance) {
-    const insight = buildDailyInsight(name, plan, currency);
-    out.push({ kind: 'day_over', key: plan.date, title: `You’re ${plan.todayOverPct}% over today’s plan`, body: insight.body });
+    const insight = buildDailyInsight(name, plan, currency, lang);
+    out.push({ kind: 'day_over', key: plan.date, title: say('You’re {pct}% over today’s plan', { pct: plan.todayOverPct }), body: insight.body });
   }
   const minWeek = fromUzs(30_000, currency);
-  for (const t of plan.categoryTrends) {
-    if (t.changePct === null || t.changePct < CATEGORY_UP_PCT) continue;
-    if (t.usualWeek < minWeek || t.thisWeek - t.usualWeek < minWeek) continue;
-    const label = `${t.category[0]!.toUpperCase()}${t.category.slice(1)}`;
+  for (const trend of plan.categoryTrends) {
+    if (trend.changePct === null || trend.changePct < CATEGORY_UP_PCT) continue;
+    if (trend.usualWeek < minWeek || trend.thisWeek - trend.usualWeek < minWeek) continue;
     out.push({
       kind: 'category_up',
-      key: `${t.category}:${weekKey(plan.date)}`,
-      title: `${label} spending is up ${t.changePct}% this week`,
-      body: `${fmt(t.thisWeek)} in the last 7 days against your usual ${fmt(t.usualWeek)}. ${CATEGORY_TIP[t.category] ?? 'Keep an eye on it this week.'}`,
+      key: `${trend.category}:${weekKey(plan.date)}`,
+      title: say('{category} spending is up {pct}% this week', { category: categoryName(trend.category, lang), pct: trend.changePct }),
+      body: `${say('{amount} in the last 7 days against your usual {usual}.', { amount: fmt(trend.thisWeek), usual: fmt(trend.usualWeek) })} ${say(CATEGORY_TIP[trend.category] ?? 'Keep an eye on it this week.')}`,
     });
   }
   return out;
@@ -70,7 +71,7 @@ export interface SpendRef {
 }
 
 /** The anomaly alert for one new spend, or null. */
-async function anomalyAlert(db: Db, userId: string, tx: SpendRef, currency: Currency): Promise<Alert | null> {
+async function anomalyAlert(db: Db, userId: string, tx: SpendRef, currency: Currency, lang: Lang): Promise<Alert | null> {
   if (tx.category === 'transfer') return null;
   const since = new Date(Date.now() - ANOMALY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const rows = await db
@@ -95,8 +96,12 @@ async function anomalyAlert(db: Db, userId: string, tx: SpendRef, currency: Curr
   return {
     kind: 'anomaly',
     key: tx.id,
-    title: `Unusual ${tx.category} spend: ${money(tx.amount, currency)}`,
-    body: `“${tx.description}” is about ${Math.max(ANOMALY_FACTOR, times)}× your usual ${tx.category} spend of ${money(r.median, currency)}. If this wasn’t you, freeze your card in FeMate.`,
+    title: t('Unusual {category} spend: {amount}', { category: categoryName(tx.category, lang), amount: money(tx.amount, currency) }, lang),
+    body: t(
+      '“{what}” is about {times}× your usual {category} spend of {usual}. If this wasn’t you, freeze your card in FeMate.',
+      { what: tx.description, times: Math.max(ANOMALY_FACTOR, times), category: categoryName(tx.category, lang), usual: money(r.median, currency) },
+      lang,
+    ),
   };
 }
 
@@ -106,8 +111,8 @@ export async function checkSpendingAlerts(db: Db, userId: string, tx?: SpendRef)
   if (!u) return [];
   const [plan, currency] = await Promise.all([monthPlan(db, userId), userCurrency(db, userId)]);
   const fresh: Alert[] = [];
-  const anomaly = tx ? await anomalyAlert(db, userId, tx, currency) : null;
-  for (const a of [...(anomaly ? [anomaly] : []), ...alertsFor(u.name, plan, currency)]) {
+  const anomaly = tx ? await anomalyAlert(db, userId, tx, currency, u.language) : null;
+  for (const a of [...(anomaly ? [anomaly] : []), ...alertsFor(u.name, plan, currency, u.language)]) {
     const inserted = await db
       .insert(alerts)
       .values({ id: newId('alr'), userId, ...a })

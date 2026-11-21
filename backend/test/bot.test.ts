@@ -68,7 +68,7 @@ describe('Telegram bot (Stage 7)', () => {
 
   it('DoD: "taxi 20000" in the bot shows up in the app', async () => {
     await link();
-    expect(await handleText(t.db, llm, DEMO.id, 'taxi 20000')).toMatch(/Added: Taxi, 20 000 UZS \(transport\)/);
+    expect(await handleText(t.db, llm, DEMO.id, 'taxi 20000')).toMatch(/Added: Taxi, 20 000 UZS \(Transport\)/);
     const { body } = await t.call<{ items: Transaction[] }>('GET', '/transactions?limit=1');
     expect(body.items[0]).toMatchObject({ amount: 20_000, category: 'transport', source: 'manual' });
     expect(await handleText(t.db, llm, DEMO.id, 'just saying hi')).toMatch(/couldn’t find an amount/);
@@ -76,7 +76,7 @@ describe('Telegram bot (Stage 7)', () => {
 
   it('a voice note adds an expense with source voice and echoes what it heard', async () => {
     await link();
-    expect(await handleVoice(t.db, llm, DEMO.id, 'Такси 20 тысяч.')).toMatch(/🎤 “Такси 20 тысяч\.”\n✅ Added: Такси, 20 000 UZS \(transport\)/);
+    expect(await handleVoice(t.db, llm, DEMO.id, 'Такси 20 тысяч.')).toMatch(/🎤 “Такси 20 тысяч\.”\n✅ Added: Такси, 20 000 UZS \(Transport\)/);
     const { body } = await t.call<{ items: Transaction[] }>('GET', '/transactions?limit=1');
     expect(body.items[0]).toMatchObject({ amount: 20_000, category: 'transport', source: 'voice' });
     expect(await handleVoice(t.db, llm, DEMO.id, 'salom')).toMatch(/couldn’t find an amount/);
@@ -87,7 +87,7 @@ describe('Telegram bot (Stage 7)', () => {
     const card = async () => (await t.call<Account[]>('GET', '/accounts')).body.find((a) => a.type === 'card')!.balance;
     const before = await card();
     const reply = await handleText(t.db, llm, DEMO.id, 'HUMOCARD *4471: oplata 45 000.00 UZS; EVOS MAGIC CITY; 17.10.26 12:10; Dostupno: 1 200 000.00 UZS');
-    expect(reply).toMatch(/Evos Magic City, 45 000 UZS \(food\)/);
+    expect(reply).toMatch(/Evos Magic City, 45 000 UZS \(Food\)/);
     expect(await card()).toBe(before - 45_000);
     const { body } = await t.call<{ items: Transaction[] }>('GET', '/transactions?limit=50');
     expect(body.items.find((x) => x.source === 'sms_forward')).toMatchObject({ amount: 45_000, category: 'food' });

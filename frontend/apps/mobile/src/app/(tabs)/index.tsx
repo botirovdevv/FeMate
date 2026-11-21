@@ -169,7 +169,7 @@ export default function Home() {
                   <Icon name={accountIcon[a.type] ?? 'cash'} size={17} color={c.label} />
                 </View>
                 <Text variant="caption" color="secondary" numberOfLines={1}>
-                  {a.name}
+                  {t(a.name)}
                 </Text>
                 <Text variant="callout" weight="600" tabular numberOfLines={1} adjustsFontSizeToFit>
                   {formatAmount(a.balance, cur)}
@@ -181,7 +181,7 @@ export default function Home() {
             return (
               <View key={a.id} style={{ flex: 1 }}>
                 {a.type === 'card' ? (
-                  <PressableScale onPress={() => router.push('/card')} accessibilityRole="button" accessibilityLabel={t('{name}, open FeMate card', { name: a.name })} style={box}>
+                  <PressableScale onPress={() => router.push('/card')} accessibilityRole="button" accessibilityLabel={t('{name}, open FeMate card', { name: t(a.name) })} style={box}>
                     {tile}
                   </PressableScale>
                 ) : (

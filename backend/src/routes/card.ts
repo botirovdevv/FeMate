@@ -13,6 +13,8 @@ import { ApiError } from '../lib/errors';
 import { newId } from '../lib/ids';
 import { toCardAuthorization, toPaymentCard } from '../lib/serialize';
 import { amountSchema, parse } from '../lib/validate';
+import { msg, t } from '../i18n';
+import { userLang } from '../i18n/user';
 
 const patchBody = z.object({ frozen: z.boolean().optional(), blockOverBudget: z.boolean().optional(), payFromFamily: z.boolean().optional() });
 const simulateBody = z.object({
@@ -52,7 +54,7 @@ export async function cardRoutes(app: FastifyInstance) {
   app.get('/card/details', async (req): Promise<CardDetails> => {
     const c = await myCard(req.userId);
     const d = await issuer().cardDetails(c.lithicToken);
-    await audit(db, req.userId, { actor: 'user', event: 'card.reveal', decision: 'info', reason: `Card ·· ${c.lastFour} number shown in the app.` });
+    await audit(db, req.userId, { actor: 'user', event: 'card.reveal', decision: 'info', reason: { key: 'Card ·· {last4} number shown in the app.', params: { last4: c.lastFour } } });
     return d;
   });
 
@@ -73,20 +75,25 @@ export async function cardRoutes(app: FastifyInstance) {
       .where(eq(cards.id, c.id))
       .returning();
     const changes = [
-      b.frozen !== undefined && b.frozen !== c.frozen ? (b.frozen ? 'frozen' : 'unfrozen') : null,
+      b.frozen !== undefined && b.frozen !== c.frozen ? (b.frozen ? msg('frozen') : msg('unfrozen')) : null,
       b.blockOverBudget !== undefined && b.blockOverBudget !== c.blockOverBudget
-        ? `over-budget purchases ${b.blockOverBudget ? 'blocked' : 'allowed'}`
+        ? b.blockOverBudget
+          ? msg('over-budget purchases blocked')
+          : msg('over-budget purchases allowed')
         : null,
       b.payFromFamily !== undefined && b.payFromFamily !== c.payFromFamily
-        ? `purchases paid from the ${b.payFromFamily ? 'family' : 'personal'} budget`
+        ? b.payFromFamily
+          ? msg('purchases paid from the family budget')
+          : msg('purchases paid from the personal budget')
         : null,
-    ].filter(Boolean);
+    ].filter((x): x is string => Boolean(x));
     if (changes.length) {
+      const lang = await userLang(db, req.userId);
       await audit(db, req.userId, {
         actor: 'user',
         event: 'card.update',
         decision: 'info',
-        reason: `${networkName(c.network)} ·· ${c.lastFour}: ${changes.join(', ')}.`,
+        reason: `${networkName(c.network)} ·· ${c.lastFour}: ${changes.map((x) => t(x, undefined, lang)).join(', ')}.`,
       });
     }
     return toPaymentCard(row!);

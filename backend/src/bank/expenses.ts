@@ -10,6 +10,7 @@ import { newId } from '../lib/ids';
 import { MAX_AMOUNT, tooLarge } from '../lib/validate';
 import { userCurrency } from './currency';
 import { accountOfType } from './mockBank';
+import { categoryKey } from '../i18n';
 
 /** A categorizer result (whole units, maybe a named currency) -> addExpense input in minor units. */
 export async function parsedExpense(
@@ -80,7 +81,7 @@ export async function addExpense(
       actor: 'user',
       event: `expense.${e.source}`,
       decision: 'info',
-      reason: `Recorded ${spentText(t, own)} for ${e.category}: “${e.description}”.`,
+      reason: { key: 'Recorded {amount} for {category}: “{what}”.', params: { amount: spentText(t, own), category: categoryKey(e.category), what: e.description } },
       details: { transactionId: t.id, amount: t.amount, category: e.category, source: e.source, ...(e.familyId ? { familyId: e.familyId } : {}) },
     });
   }

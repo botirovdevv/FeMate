@@ -9,6 +9,7 @@ import { money } from '../lib/format';
 import { dailySummary } from '../rules/dailyAllowance';
 import { expoPush } from '../notify/notify';
 import { dailyReport, type Report } from './core';
+import { t } from '../i18n';
 
 /** "HH:MM" in Tashkent (UTC+5) for an instant. */
 export function tashkentClock(at: Date): string {
@@ -37,9 +38,9 @@ export async function runDueReports(
       if (u.expoPushToken && send.push) {
         const s = await dailySummary(db, u.id);
         const body = r.pending.length
-          ? `Spent ${money(s.todaySpent, r.currency)} today. An agent action is waiting for your approval.`
-          : `Spent ${money(s.todaySpent, r.currency)} of ${money(s.dailyAllowance, r.currency)} today.`;
-        await send.push(u.expoPushToken, 'Your FeMate day', body);
+          ? t('Spent {amount} today. An agent action is waiting for your approval.', { amount: money(s.todaySpent, r.currency) }, u.language)
+          : t('Spent {amount} of {limit} today.', { amount: money(s.todaySpent, r.currency), limit: money(s.dailyAllowance, r.currency) }, u.language);
+        await send.push(u.expoPushToken, t('Your FeMate day', undefined, u.language), body);
       }
       done.push(u.id);
     } catch (err) {

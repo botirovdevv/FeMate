@@ -88,7 +88,7 @@ describe('currency in the API', () => {
     const c = await t.call<Transaction>('POST', '/transactions', { text: 'taxi 20 ming' });
     expect(c.body.amount).toBe(20_000);
     expect(c.body.original).toBeUndefined();
-    expect(await handleText(t.db, createProvider({ LLM_PROVIDER: 'mock' }), DEMO.id, 'lunch 10 dollars')).toMatch(/Lunch, 121 000 UZS \(\$10\.00\) \(food\)/);
+    expect(await handleText(t.db, createProvider({ LLM_PROVIDER: 'mock' }), DEMO.id, 'lunch 10 dollars')).toMatch(/Lunch, 121 000 UZS \(\$10\.00\) \(Food\)/);
   });
 
   it('switching to USD converts balances, history, limits and pending actions', async () => {

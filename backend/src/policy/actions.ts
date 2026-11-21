@@ -13,15 +13,17 @@ import { money } from '../lib/format';
 import { newId } from '../lib/ids';
 import { MAX_AMOUNT } from '../lib/validate';
 import { toAction } from '../lib/serialize';
+import { categoryKey, render, t, type Msg } from '../i18n';
+import { userLang } from '../i18n/user';
 import { PENDING_TTL_MS } from './limits';
 import { checkPolicy, type ActionTool, type ToolArgs } from './policyGuard';
 
 type ActionRow = typeof agentActions.$inferSelect;
 
-function describe(tool: ActionTool, payload: Record<string, unknown>, currency: Currency): string {
+function describe(tool: ActionTool, payload: Record<string, unknown>, currency: Currency): Msg {
   return tool === 'transfer_to_savings'
-    ? `${money(Number(payload.amount), currency)} Card → Savings`
-    : `${String(payload.category)} budget ${money(Number(payload.monthlyLimit), currency)}/month`;
+    ? { key: '{amount} Card → Savings', params: { amount: money(Number(payload.amount), currency) } }
+    : { key: '{category} budget {amount}/month', params: { category: categoryKey(String(payload.category)), amount: money(Number(payload.monthlyLimit), currency) } };
 }
 
 async function execute(db: Db, userId: string, a: ActionRow) {
@@ -73,6 +75,7 @@ export async function proposeAction(
 
   const payload: Record<string, unknown> = { ...d.args, ...d.transfer };
   const what = describe(tool, payload, await userCurrency(db, userId));
+  const lang = await userLang(db, userId);
   if (d.mode === 'confirm') {
     const [row] = await db
       .insert(agentActions)
@@ -82,11 +85,11 @@ export async function proposeAction(
       actor: opts.actor,
       event,
       decision: 'allowed',
-      reason: `${what}. Waiting for your approval.`,
+      reason: { key: '{what}. Waiting for your approval.', params: { what: render(what, lang) } },
       details: { actionId: row!.id, args: payload },
       level: d.perms.level,
     });
-    return { action: toAction(row!), message: `${what} is waiting for your approval.` };
+    return { action: toAction(row!), message: t('{what} is waiting for your approval.', { what: render(what, lang) }, lang) };
   }
 
   // L3 Autopilot: execute within limits, then tell the user.
@@ -102,11 +105,11 @@ export async function proposeAction(
     actor: opts.actor,
     event,
     decision: 'allowed',
-    reason: `${what}. Done automatically (Autopilot).`,
+    reason: { key: '{what}. Done automatically (Autopilot).', params: { what: render(what, lang) } },
     details: { actionId: row.id, args: payload },
     level: d.perms.level,
   });
-  return { action: toAction(row), message: `${what}. Done.` };
+  return { action: toAction(row), message: t('{what}. Done.', { what: render(what, lang) }, lang) };
 }
 
 /** Pending actions past their 15 minutes become expired (checked lazily on every read). */
@@ -117,12 +120,13 @@ export async function expirePending(db: Db, userId: string) {
     .where(and(eq(agentActions.userId, userId), eq(agentActions.status, 'pending'), lt(agentActions.expiresAt, sql`now()`)))
     .returning();
   const currency = expired.length ? await userCurrency(db, userId) : 'UZS';
+  const lang = expired.length ? await userLang(db, userId) : 'en';
   for (const a of expired) {
     await audit(db, userId, {
       actor: 'system',
       event: 'action.expire',
       decision: 'info',
-      reason: `${describe(a.type, a.payload, currency)} expired after 15 minutes without approval.`,
+      reason: { key: '{what} expired after 15 minutes without approval.', params: { what: render(describe(a.type, a.payload, currency), lang) } },
       details: { actionId: a.id },
     });
   }
@@ -140,7 +144,7 @@ async function getOwned(db: Db, userId: string, id: string) {
 export async function approveAction(db: Db, userId: string, id: string): Promise<AgentAction> {
   await expirePending(db, userId);
   const a = await getOwned(db, userId, id);
-  if (a.status !== 'pending') throw new ApiError(409, 'NOT_PENDING', `This action is already ${a.status}.`);
+  if (a.status !== 'pending') throw new ApiError(409, 'NOT_PENDING', 'This action is already {status}.', { status: a.status });
 
   // Checks 1–8 again: the kill switch, limits or balance may have changed since it was proposed.
   const d = await checkPolicy(db, userId, a.type, a.payload);
@@ -168,7 +172,7 @@ export async function approveAction(db: Db, userId: string, id: string): Promise
     actor: 'user',
     event: 'action.approve',
     decision: 'allowed',
-    reason: `Approved: ${describe(row.type, row.payload, await userCurrency(db, userId))}.`,
+    reason: { key: 'Approved: {what}.', params: { what: render(describe(row.type, row.payload, await userCurrency(db, userId)), await userLang(db, userId)) } },
     details: { actionId: row.id },
   });
   return toAction(row);
@@ -177,7 +181,7 @@ export async function approveAction(db: Db, userId: string, id: string): Promise
 export async function rejectAction(db: Db, userId: string, id: string): Promise<AgentAction> {
   await expirePending(db, userId);
   const a = await getOwned(db, userId, id);
-  if (a.status !== 'pending') throw new ApiError(409, 'NOT_PENDING', `This action is already ${a.status}.`);
+  if (a.status !== 'pending') throw new ApiError(409, 'NOT_PENDING', 'This action is already {status}.', { status: a.status });
   const [row] = await db
     .update(agentActions)
     .set({ status: 'rejected', decidedAt: new Date() })
@@ -189,7 +193,7 @@ export async function rejectAction(db: Db, userId: string, id: string): Promise<
     actor: 'user',
     event: 'action.reject',
     decision: 'info',
-    reason: `Rejected: ${describe(a.type, a.payload, await userCurrency(db, userId))}. Nothing was changed.`,
+    reason: { key: 'Rejected: {what}. Nothing was changed.', params: { what: render(describe(a.type, a.payload, await userCurrency(db, userId)), await userLang(db, userId)) } },
     details: { actionId: a.id },
   });
   return toAction(row);

@@ -47,6 +47,7 @@ function AccountPicker({
   exclude?: AccountType;
 }) {
   const { c } = useTheme();
+  const { t: tr } = useT();
   const cur = useCurrency();
   return (
     <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -60,7 +61,7 @@ function AccountPicker({
             <PressableScale
               accessibilityRole="radio"
               accessibilityState={{ checked: on, disabled: off }}
-              accessibilityLabel={a?.name ?? t}
+              accessibilityLabel={tr(a?.name ?? t)}
               disabled={off}
               onPress={() => {
                 haptic('light');
@@ -80,7 +81,7 @@ function AccountPicker({
               <Icon name={ACCOUNT_ICON[t]} size={20} color={c.label} />
               <View>
                 <Text variant="caption" color="secondary" numberOfLines={1}>
-                  {a?.name ?? t}
+                  {tr(a?.name ?? t)}
                 </Text>
                 <Text variant="callout" weight="600" tabular numberOfLines={1} adjustsFontSizeToFit>
                   {formatAmount(a?.balance ?? 0, cur)}
@@ -118,7 +119,9 @@ export default function MoneySheet() {
   const [loadedSet, setLoadedSet] = useState(false);
 
   const balanceOf = (t: AccountType) => accounts.find((a) => a.type === t)?.balance ?? 0;
-  const nameOf = (t: AccountType) => accounts.find((a) => a.type === t)?.name ?? t;
+  // Account names come from the server in English (Card, Cash, Savings); custom names pass through t() unchanged.
+  // msg('Cash') msg('card') msg('cash') msg('savings')
+  const nameOf = (acc: AccountType) => t(accounts.find((a) => a.type === acc)?.name ?? acc);
   const amount = parseAmountInput(text, cur);
 
   // t("Set balance") starts from what the app thinks is there (adjusting state during render, once).

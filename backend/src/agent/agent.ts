@@ -10,6 +10,7 @@ import { dailySummary } from '../rules/dailyAllowance';
 import type { LlmMessage, LlmProvider } from './llm/provider';
 import { systemPrompt } from './prompts';
 import { runTool, toolDefinitions, type ToolContext } from './tools';
+import { t } from '../i18n';
 
 export const MAX_TOOL_CALLS = 5;
 const HISTORY = 10;
@@ -27,17 +28,20 @@ export async function chat(db: Db, llm: LlmProvider, userId: string, message: st
     .limit(HISTORY);
   const messages: LlmMessage[] = history.reverse().map((m) => ({ role: m.role, content: m.content }));
   const today = await dailySummary(db, userId).catch(() => null);
-  const system = systemPrompt(user.name, user.currency, today);
+  const lang = user.language;
+  const system = systemPrompt(user.name, user.currency, today, lang);
 
   const ctx: ToolContext = { db, userId, actions: [] };
   let calls = 0;
   let reply = '';
   // Bounded: every iteration either ends the turn or spends at least one of the 5 tool calls.
   for (;;) {
-    const res = await llm.chat({ system, messages, tools: calls < MAX_TOOL_CALLS ? toolDefinitions : [], currency: user.currency });
+    const res = await llm.chat({ system, messages, tools: calls < MAX_TOOL_CALLS ? toolDefinitions : [], currency: user.currency, lang });
     const wanted = calls < MAX_TOOL_CALLS ? (res.toolCalls ?? []).slice(0, MAX_TOOL_CALLS - calls) : [];
     if (wanted.length === 0) {
-      reply = res.text?.trim() || (calls >= MAX_TOOL_CALLS ? 'I reached my limit of 5 steps for one message. Try a simpler request.' : 'Sorry, I don’t have an answer for that.');
+      reply =
+        res.text?.trim() ||
+        t(calls >= MAX_TOOL_CALLS ? 'I reached my limit of 5 steps for one message. Try a simpler request.' : 'Sorry, I don’t have an answer for that.', undefined, lang);
       break;
     }
     messages.push({ role: 'assistant', content: res.text ?? '', toolCalls: wanted });
