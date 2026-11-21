@@ -139,7 +139,6 @@ export default function ActionSheet() {
           />
         ) : null}
         <View style={{ gap: 10 }}>
-          <PillButton title={t('View audit log')} icon="file" variant="secondary" onPress={() => router.navigate('/activity')} />
           <PillButton title={t('Done')} onPress={() => router.back()} />
         </View>
       </ScrollView>

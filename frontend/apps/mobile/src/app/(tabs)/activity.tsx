@@ -1,25 +1,21 @@
-import type { AuditEntry } from '@femate/shared';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Platform, Share, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
 import { HeroButton, Notice, PillButton, SectionTitle, SlateProgress } from '@/components/slate';
-import { Banner, ErrorRow, haptic, Text } from '@/components/ui';
-import { api, errorMessage } from '@/lib/api';
+import { Banner, haptic, Text } from '@/components/ui';
+import { errorMessage } from '@/lib/api';
 import { useCurrency } from '@/lib/currency';
-import { formatAmount, formatTime } from '@/lib/format';
-import { useActions, useAudit, useKillSwitch, usePermissions, useTransactions, useUpdatePermissions } from '@/lib/queries';
-import { space, useTheme } from '@/theme';
+import { formatAmount } from '@/lib/format';
+import { useActions, useKillSwitch, usePermissions, useTransactions, useUpdatePermissions } from '@/lib/queries';
+import { useTheme } from '@/theme';
 import { useT } from '@/i18n';
 
-// t('Read-only') t('Advisor') t('Co-pilot') t('Autopilot') t('Agent') t('You') t('System') t('Allowed') t('Blocked') t('Info') t('Balances') t('Transactions') t('Own transfers')
+// t('Read-only') t('Advisor') t('Co-pilot') t('Autopilot') t('Balances') t('Transactions') t('Own transfers')
 const levelName = { L0: 'Read-only', L1: 'Advisor', L2: 'Co-pilot', L3: 'Autopilot' } as const;
 const levelIcon: Record<keyof typeof levelName, IconName> = { L0: 'eye', L1: 'bulb', L2: 'shieldCheck', L3: 'rocket' };
-const actorIcon: Record<AuditEntry['actor'], IconName> = { agent: 'bot', user: 'user', system: 'cpu' };
-const actorLabel: Record<AuditEntry['actor'], string> = { agent: 'Agent', user: 'You', system: 'System' };
-const decisionLabel: Record<AuditEntry['decision'], string> = { allowed: 'Allowed', blocked: 'Blocked', info: 'Info' };
 
 /** 00:00 today in Tashkent, where the server counts the agent's daily limit. */
 function tashkentDayStart(now = Date.now()): number {
@@ -37,12 +33,10 @@ export default function Activity() {
   const cur = useCurrency();
   const { c } = useTheme();
   const perms = usePermissions();
-  const audit = useAudit();
   const pending = useActions('pending');
   const txs = useTransactions();
   const kill = useKillSwitch();
   const update = useUpdatePermissions();
-  const [exported, setExported] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const p = perms.data;
@@ -55,35 +49,6 @@ export default function Activity() {
   const onError = (e: unknown) => {
     haptic('warning');
     setErr(errorMessage(e));
-  };
-
-  const decisionStyle = {
-    allowed: { bg: c.positiveTint, fg: c.positive, icon: 'check' as IconName },
-    blocked: { bg: c.dangerTint, fg: c.dangerInk, icon: 'x' as IconName },
-    info: { bg: c.fill, fg: c.secondary, icon: 'info' as IconName },
-  };
-
-  const exportLog = async () => {
-    setErr(null);
-    try {
-      const json = JSON.stringify(await api.auditExport(), null, 2);
-      if (Platform.OS === 'web') {
-        // Browsers: download the file.
-        const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'femate-audit-log.json';
-        link.click();
-        URL.revokeObjectURL(url);
-        setExported(true);
-        return;
-      }
-      const res = await Share.share({ title: 'audit-log.json', message: json });
-      setExported(res.action === Share.sharedAction);
-    } catch (e) {
-      setExported(false);
-      onError(e);
-    }
   };
 
   const statusText = stopped
@@ -99,8 +64,8 @@ export default function Activity() {
       tabs
       title={t("Agent")}
       right={<HeroButton icon="sliders" label={t("Change permissions")} onPress={() => router.push({ pathname: '/connect-bank', params: { mode: 'edit' } })} />}
-      refreshing={audit.isRefetching}
-      onRefresh={() => void Promise.all([audit.refetch(), perms.refetch(), pending.refetch()])}
+      refreshing={perms.isRefetching}
+      onRefresh={() => void Promise.all([perms.refetch(), pending.refetch(), txs.refetch()])}
       hero={
         <View style={{ gap: 18 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
@@ -204,51 +169,6 @@ export default function Activity() {
 
       {err ? <Notice text={err} /> : null}
 
-      <View>
-        <SectionTitle title={t("Audit log")} action={exported ? t('Exported') : t('Export JSON')} onAction={() => void exportLog()} />
-        {audit.isError ? <ErrorRow message={t("Couldn’t load the audit log.")} onRetry={() => void audit.refetch()} /> : null}
-        {audit.isLoading ? <ActivityIndicator color={c.secondary} style={{ paddingVertical: 24 }} /> : null}
-        {audit.data && audit.data.items.length === 0 ? (
-          <Text variant="callout" color="secondary" style={{ paddingVertical: 12 }}>
-            {t('Nothing yet. Every agent decision and money move shows up here.')}
-          </Text>
-        ) : null}
-        {(audit.data?.items ?? []).map((e, i, all) => {
-          const d = decisionStyle[e.decision] ?? decisionStyle.info;
-          return (
-            <View key={e.id} style={{ flexDirection: 'row', gap: 14, paddingVertical: 14, borderBottomWidth: i === all.length - 1 ? 0 : 1, borderBottomColor: c.separator }}>
-              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: d.bg, alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name={d.icon} size={15} color={d.fg} strokeWidth={2.4} />
-              </View>
-              <View style={{ flex: 1, gap: 3 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.sm }}>
-                  <Text variant="footnote" weight="600" numberOfLines={1} style={{ flex: 1, fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }) }}>
-                    {e.event}
-                  </Text>
-                  <Text variant="caption" color="secondary" tabular>
-                    {formatTime(e.createdAt)}
-                  </Text>
-                </View>
-                <Text variant="footnote" color="body" style={{ fontSize: 14 }}>
-                  {e.reason}
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                  <Text variant="caption" weight="700" color={d.fg}>
-                    {decisionLabel[e.decision] ? t(decisionLabel[e.decision]) : e.decision}
-                  </Text>
-                  <Text variant="caption" color="secondary">
-                    ·
-                  </Text>
-                  <Icon name={actorIcon[e.actor] ?? 'info'} size={12} color={e.actor === 'agent' ? c.brandInk : c.secondary} strokeWidth={2.2} />
-                  <Text variant="caption" color={e.actor === 'agent' ? c.brandInk : c.secondary}>
-                    {actorLabel[e.actor] ? t(actorLabel[e.actor]) : e.actor} · {e.permissionLevel}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          );
-        })}
-      </View>
     </Screen>
   );
 }
