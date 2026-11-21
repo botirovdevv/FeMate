@@ -32,8 +32,8 @@ export function FamilySummary() {
           {o.family.name}
         </Text>
         {waiting ? (
-          <View style={{ backgroundColor: s.heroText, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 }}>
-            <Text style={{ fontSize: 12, fontWeight: '700', color: s.heroBg }}>{tn('{n} to approve|{n} to approve', waiting)}</Text>
+          <View style={{ backgroundColor: s.brand, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 }}>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: s.onBrand }}>{tn('{n} to approve|{n} to approve', waiting)}</Text>
           </View>
         ) : (
           <Icon name="chevronRight" size={18} color={s.heroMuted} />

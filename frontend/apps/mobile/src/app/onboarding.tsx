@@ -164,7 +164,7 @@ export default function Onboarding() {
       </View>
 
       <View style={{ gap: 14 }}>
-        <IconTile name={q.icon} bg={c.accent} fg={c.onAccent} size={64} iconSize={30} />
+        <IconTile name={q.icon} bg={c.brand} fg={c.onBrand} size={64} iconSize={30} />
         <Text variant="title" style={{ fontSize: 30, lineHeight: 35 }} accessibilityRole="header">
           {t(q.title)}
         </Text>

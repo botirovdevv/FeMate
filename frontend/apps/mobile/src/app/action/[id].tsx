@@ -4,7 +4,7 @@ import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/Icon';
-import { PillButton, StatRows } from '@/components/slate';
+import { BrandMark, PillButton, StatRows } from '@/components/slate';
 import { haptic, Text } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { useCurrency } from '@/lib/currency';
@@ -123,6 +123,7 @@ export default function ActionSheet() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: c.sheet }} contentContainerStyle={{ padding: 24, paddingTop: 28, paddingBottom: insets.bottom + 24, gap: 20 }}>
       <View style={{ gap: 6 }}>
+        <BrandMark />
         <Text variant="title" accessibilityRole="header">
           {isTransfer ? t('Confirm transfer') : t('Confirm budget')}
         </Text>

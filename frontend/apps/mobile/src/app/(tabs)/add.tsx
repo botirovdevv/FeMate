@@ -276,8 +276,8 @@ export default function Add() {
         <Card style={{ gap: 16 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Icon name="bot" size={15} color={c.ai} strokeWidth={2} />
-              <Text variant="sectionLabel" color="aiInk">
+              <Icon name="bot" size={15} color={c.brandInk} strokeWidth={2} />
+              <Text variant="sectionLabel" color="brandInk">
                 {t('FeMate understood')}
               </Text>
             </View>
@@ -354,7 +354,7 @@ export default function Add() {
 
       {busy ? (
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <IconTile name="wave" bg={c.aiTint} fg={c.ai} size={40} iconSize={22} />
+          <IconTile name="wave" bg={c.brandTint} fg={c.brandInk} size={40} iconSize={22} />
           <Text variant="callout" color="secondary" style={{ flex: 1 }}>
             {t('Listening back to your note…')}
           </Text>

@@ -26,7 +26,8 @@ export function PillTabBar({ state, descriptors, navigation, icons }: TabBarProp
   // Out of the way while typing; the screens already lift their inputs above the keyboard.
   const keyboard = useKeyboardHeight();
   const bar = dark ? '#1C1C1F' : '#000000';
-  const active = '#FFFFFF';
+  // The active tab is the lime brand circle: a touch of colour on every tab screen.
+  const active = '#C6F432';
   const idle = 'rgba(255,255,255,0.55)';
   if (keyboard > 0) return null;
   return (

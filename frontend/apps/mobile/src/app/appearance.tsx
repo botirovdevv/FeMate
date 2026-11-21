@@ -34,7 +34,7 @@ export default function AppearanceSetup() {
       }}
     >
       <View style={{ gap: 12 }}>
-        <IconTile name="sun" bg={c.accent} fg={c.onAccent} size={64} iconSize={30} />
+        <IconTile name="sun" bg={c.brand} fg={c.onBrand} size={64} iconSize={30} />
         <Text variant="title" style={{ fontSize: 30 }} accessibilityRole="header">
           {t('Choose your look')}
         </Text>

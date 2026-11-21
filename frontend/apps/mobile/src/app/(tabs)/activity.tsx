@@ -104,8 +104,8 @@ export default function Activity() {
       hero={
         <View style={{ gap: 18 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: stopped ? '#2C2C2F' : c.ai, alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name={stopped ? 'pause' : levelIcon[p?.level ?? 'L1']} size={26} color="#FFFFFF" strokeWidth={2} />
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: stopped ? '#2C2C2F' : c.brand, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name={stopped ? 'pause' : levelIcon[p?.level ?? 'L1']} size={26} color={stopped ? '#FFFFFF' : c.onBrand} strokeWidth={2} />
             </View>
             <View style={{ flex: 1, gap: 2 }}>
               <Text variant="title2" color="#FFFFFF">
@@ -239,8 +239,8 @@ export default function Activity() {
                   <Text variant="caption" color="secondary">
                     ·
                   </Text>
-                  <Icon name={actorIcon[e.actor] ?? 'info'} size={12} color={e.actor === 'agent' ? c.ai : c.secondary} strokeWidth={2.2} />
-                  <Text variant="caption" color={e.actor === 'agent' ? c.aiInk : c.secondary}>
+                  <Icon name={actorIcon[e.actor] ?? 'info'} size={12} color={e.actor === 'agent' ? c.brandInk : c.secondary} strokeWidth={2.2} />
+                  <Text variant="caption" color={e.actor === 'agent' ? c.brandInk : c.secondary}>
                     {actorLabel[e.actor] ? t(actorLabel[e.actor]) : e.actor} · {e.permissionLevel}
                   </Text>
                 </View>

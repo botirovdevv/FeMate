@@ -268,7 +268,8 @@ export default function Reports() {
             />
             {bars.map((b, i) => {
               const on = i === sel;
-              const color = b.amount === 0 ? c.fill2 : b.amount > limit ? c.warn : on ? c.accent : c.accentSoft;
+              // The selected bar is the lime brand colour; the rest stay grey.
+              const color = b.amount === 0 ? c.fill2 : b.amount > limit ? c.warn : on ? c.brand : c.accentSoft;
               return (
                 <Pressable
                   key={b.label}
@@ -395,7 +396,7 @@ export default function Reports() {
 
       <Card style={{ gap: 18 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <IconTile name="tune" bg={c.aiTint} fg={c.ai} size={40} iconSize={22} />
+          <IconTile name="tune" bg={c.brandTint} fg={c.brandInk} size={40} iconSize={22} />
           <View style={{ gap: 2 }}>
             <Text variant="title2">{t('What if…')}</Text>
             <Text variant="footnote" color="secondary" style={{ fontSize: 14 }}>

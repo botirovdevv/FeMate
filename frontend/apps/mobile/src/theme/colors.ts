@@ -1,5 +1,5 @@
 // Color tokens (light + dark), "Slate" style: monochrome, green for positive states only (money in, on track,
-// approved) and one violet accent for the AI. Screens read these through useTheme().
+// approved) and the lime brand accent used a little on every screen. Screens read these through useTheme().
 
 export interface Palette {
   bg: string;
@@ -37,13 +37,14 @@ export interface Palette {
   positiveTint: string;
   positiveInk: string;
   /**
-   * The one brand accent: violet marks the AI (assistant, agent, its suggestions). It never means a money state,
-   * so it can't be confused with green (good), amber (warning) or red (blocked).
+   * The brand accent, lime #C6F432: a little of it on every screen (active tab, hero progress, the AI, highlights).
+   * It's light, so it's a fill with black on it, or a highlight on black; text on white uses `brandInk`.
+   * It never means a money state (that's green, amber, red).
    */
-  ai: string;
-  onAi: string;
-  aiTint: string;
-  aiInk: string;
+  brand: string;
+  onBrand: string;
+  brandTint: string;
+  brandInk: string;
 }
 
 export const light: Palette = {
@@ -80,10 +81,10 @@ export const light: Palette = {
   positive: '#1E9E5A',
   positiveTint: '#E6F5EC',
   positiveInk: '#12673A',
-  ai: '#6E56F8',
-  onAi: '#FFFFFF',
-  aiTint: '#EFEBFF',
-  aiInk: '#4B34C9',
+  brand: '#C6F432',
+  onBrand: '#000000',
+  brandTint: '#F2FCCF',
+  brandInk: '#4A5E00',
 };
 
 // Dark: the page is black, surfaces lift to dark greys, and black-on-white controls flip to white-on-black.
@@ -121,8 +122,8 @@ export const dark: Palette = {
   positive: '#34C77B',
   positiveTint: '#12301F',
   positiveInk: '#8BE3B5',
-  ai: '#8C78FF',
-  onAi: '#FFFFFF',
-  aiTint: '#231C45',
-  aiInk: '#C7BCFF',
+  brand: '#C6F432',
+  onBrand: '#000000',
+  brandTint: '#262F0B',
+  brandInk: '#C6F432',
 };

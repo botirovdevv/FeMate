@@ -138,7 +138,7 @@ export default function Settings() {
         <HeroHeader title={t("Profile")} back>
           <View style={{ alignItems: 'center', gap: 10, paddingBottom: 4 }}>
             {/* Avatar in a dashed ring, like the reference profile. */}
-            <View style={{ width: 92, height: 92, borderRadius: 46, borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.35)', alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ width: 92, height: 92, borderRadius: 46, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.brand, alignItems: 'center', justifyContent: 'center' }}>
               <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
                 <Text variant="title" color="#000000" weight="600">
                   {(u?.name ?? 'A').charAt(0).toUpperCase()}

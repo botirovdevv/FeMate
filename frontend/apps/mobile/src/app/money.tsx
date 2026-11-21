@@ -13,6 +13,7 @@ import { useKeyboardHeight } from '@/lib/useKeyboardHeight';
 import { useAccounts, useCard, useDeposit, useSetBalance, useTransfer } from '@/lib/queries';
 import { space, useTheme } from '@/theme';
 import { useT } from '@/i18n';
+import { BrandMark } from '@/components/slate';
 
 type Mode = 'add' | 'move' | 'set';
 type AccountType = Account['type'];
@@ -195,7 +196,8 @@ export default function MoneySheet() {
       style={{ backgroundColor: c.sheet }}
       contentContainerStyle={{ paddingTop: space.xxl + 4, paddingHorizontal: space.xxl, paddingBottom: insets.bottom + 24 + kb, gap: space.xl }}
     >
-      <Text variant="title" accessibilityRole="header">
+      <BrandMark />
+        <Text variant="title" accessibilityRole="header">
         {title}
       </Text>
 

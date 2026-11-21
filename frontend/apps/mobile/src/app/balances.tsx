@@ -71,7 +71,7 @@ export default function StartingBalances() {
       }}
     >
       <View style={{ gap: 14 }}>
-        <IconTile name="wallet" bg={c.accent} fg={c.onAccent} size={64} iconSize={30} />
+        <IconTile name="wallet" bg={c.brand} fg={c.onBrand} size={64} iconSize={30} />
         <Text variant="title" style={{ fontSize: 30, lineHeight: 35 }} accessibilityRole="header">
           {t('How much do you have right now?')}
         </Text>

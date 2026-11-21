@@ -30,6 +30,10 @@ export interface SlatePalette {
   dangerTint: string;
   warnTint: string;
   warnInk: string;
+  brand: string;
+  onBrand: string;
+  brandTint: string;
+  brandInk: string;
 }
 
 // Derived from the app palette, so the Slate pieces and the restyled shared components always match.
@@ -54,6 +58,10 @@ export function useSlate(): SlatePalette {
     dangerTint: c.dangerTint,
     warnTint: c.warnTint,
     warnInk: c.warnInk,
+    brand: c.brand,
+    onBrand: c.onBrand,
+    brandTint: c.brandTint,
+    brandInk: c.brandInk,
   };
 }
 
@@ -96,6 +104,7 @@ export function HeroHeader({ title, back, right, children }: { title: string; ba
         </Text>
         {right ? <View style={{ flexDirection: 'row', gap: 10 }}>{right}</View> : null}
       </View>
+      <BrandMark style={{ marginTop: -12, marginLeft: back ? 56 : 0 }} />
       {children}
     </View>
   );
@@ -168,12 +177,12 @@ export function CircleAction({
           borderRadius: 28,
           borderWidth: active ? 0 : 1,
           borderColor: s.border,
-          backgroundColor: active ? s.primary : s.bg,
+          backgroundColor: active ? s.brand : s.bg,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Icon name={icon} size={22} color={active ? s.onPrimary : s.text} strokeWidth={1.8} />
+        <Icon name={icon} size={22} color={active ? s.onBrand : s.text} strokeWidth={1.8} />
         {badge ? (
           <View
             style={{
@@ -263,7 +272,7 @@ export function SlateProgress({ value, onHero, height = 8 }: { value: number; on
   const pct = Math.max(0, Math.min(1, value));
   return (
     <View style={{ height, borderRadius: height / 2, backgroundColor: onHero ? s.heroTrack : s.secondaryBg, overflow: 'hidden' }}>
-      <View style={{ width: `${pct * 100}%`, height, borderRadius: height / 2, backgroundColor: onHero ? s.heroText : s.primary }} />
+      <View style={{ width: `${pct * 100}%`, height, borderRadius: height / 2, backgroundColor: onHero ? s.brand : s.primary }} />
     </View>
   );
 }
@@ -423,8 +432,8 @@ export function PillChip({ label, selected, onPress }: { label: string; selected
 /** Inline notice on the white page. */
 export function Notice({ tone = 'danger', text }: { tone?: 'danger' | 'warn' | 'info'; text: string }) {
   const s = useSlate();
-  const bg = tone === 'danger' ? s.dangerTint : tone === 'warn' ? s.warnTint : s.surface;
-  const fg = tone === 'danger' ? s.danger : tone === 'warn' ? s.warnInk : s.text;
+  const bg = tone === 'danger' ? s.dangerTint : tone === 'warn' ? s.warnTint : s.brandTint;
+  const fg = tone === 'danger' ? s.danger : tone === 'warn' ? s.warnInk : s.brandInk;
   return (
     <View
       accessibilityLiveRegion="polite"
@@ -457,6 +466,7 @@ export function SheetBody({ title, note, children }: { title: string; note?: str
       contentContainerStyle={{ padding: 24, paddingTop: 28, paddingBottom: insets.bottom + 24, gap: 22 }}
     >
       <View style={{ gap: 6 }}>
+        <BrandMark style={{ marginBottom: 6 }} />
         <Text accessibilityRole="header" style={{ fontSize: 26, lineHeight: 32, fontWeight: '600', letterSpacing: -0.4, color: s.text }}>
           {title}
         </Text>
@@ -540,4 +550,10 @@ export function TextField({
       />
     </View>
   );
+}
+
+/** A short lime bar: the brand mark under hero titles and above sheet titles. */
+export function BrandMark({ style }: { style?: StyleProp<ViewStyle> }) {
+  const s = useSlate();
+  return <View accessibilityElementsHidden importantForAccessibility="no" style={[{ width: 28, height: 4, borderRadius: 2, backgroundColor: s.brand }, style]} />;
 }

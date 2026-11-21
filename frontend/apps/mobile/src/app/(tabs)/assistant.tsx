@@ -130,8 +130,8 @@ export default function Assistant() {
         <View style={{ marginHorizontal: -space.lg, marginTop: -(insets.top + space.md), marginBottom: 6 }}>
           <HeroHeader title={t("Assistant")}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-              <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: c.ai, alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name="bot" size={26} color={c.onAi} strokeWidth={2} />
+              <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: c.brand, alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="bot" size={26} color={c.onBrand} strokeWidth={2} />
               </View>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text variant="headline" color="#FFFFFF">
@@ -150,7 +150,7 @@ export default function Assistant() {
         {visibleRecs.map((r) => (
           <Card key={r.id} style={{ padding: 18, gap: 12 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <IconTile name={recIcon[r.id] ?? 'bulb'} bg={c.aiTint} fg={c.ai} size={44} iconSize={22} />
+              <IconTile name={recIcon[r.id] ?? 'bulb'} bg={c.brandTint} fg={c.brandInk} size={44} iconSize={22} />
               <View style={{ flex: 1, gap: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <Icon name="trend" size={13} color={c.accent} strokeWidth={2.4} />
@@ -238,7 +238,7 @@ export default function Assistant() {
               key={m.id}
               style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-end', justifyContent: me ? 'flex-end' : 'flex-start' }}
             >
-              {!me ? <IconTile name="bot" bg={c.ai} fg={c.onAi} size={28} iconSize={15} /> : null}
+              {!me ? <IconTile name="bot" bg={c.brand} fg={c.onBrand} size={28} iconSize={15} /> : null}
               <View style={{ maxWidth: '80%', gap: 6, alignItems: me ? 'flex-end' : 'flex-start' }}>
                 <View
                   style={{
@@ -322,7 +322,7 @@ export default function Assistant() {
         })}
         {chat.isPending ? (
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            <IconTile name="bot" bg={c.ai} fg={c.onAi} size={28} iconSize={15} />
+            <IconTile name="bot" bg={c.brand} fg={c.onBrand} size={28} iconSize={15} />
             <Text variant="footnote" color="secondary">
               Thinking…
             </Text>

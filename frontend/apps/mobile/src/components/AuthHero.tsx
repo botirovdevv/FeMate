@@ -6,6 +6,7 @@ import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '@/theme';
 import { LogoMark, Wordmark } from './Logo';
 import { Text } from './ui';
+import { BrandMark } from './slate';
 
 /**
  * Sign-in / sign-up hero: a black block whose bottom edge sweeps in a curve (reference design), with the
@@ -29,6 +30,7 @@ export function AuthHero({ subtitle, compact, children }: { subtitle: string; co
           <LogoMark size={compact ? 30 : 38} variant="white" animated={!compact} />
           <Wordmark size={compact ? 20 : 26} dark />
         </View>
+        {compact ? null : <BrandMark />}
         {compact ? null : (
           <Text variant="callout" color="rgba(255,255,255,0.62)" style={{ maxWidth: 260 }}>
             {subtitle}
