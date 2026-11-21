@@ -6,16 +6,15 @@ import { ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/Icon';
-import { InsightCard } from '@/components/InsightCard';
-import { HeroHeader } from '@/components/slate';
+import { HeroHeader, Notice, SectionTitle } from '@/components/slate';
 import { TAB_BAR_SPACE } from '@/components/PillTabBar';
-import { Button, Card, haptic, IconTile, PressableScale, Text } from '@/components/ui';
+import { Button, font, haptic, IconTile, LoadingDots, PressableScale, Text } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { useKeyboardHeight } from '@/lib/useKeyboardHeight';
 import { useCurrency } from '@/lib/currency';
 import { formatAmount, formatMoney } from '@/lib/format';
 import { useActions, useApplyRecommendation, useChat, useInsight, usePermissions, useRecommendations } from '@/lib/queries';
-import { space, useTheme } from '@/theme';
+import { useTheme } from '@/theme';
 import { t as tr, useT } from '@/i18n';
 
 interface Msg {
@@ -111,7 +110,22 @@ export default function Assistant() {
   };
 
   const composerBottom = kb > 0 ? kb : insets.bottom + TAB_BAR;
-  const visibleRecs = (recs.data ?? []).filter((r) => !hidden.includes(r.id));
+  const visibleRecs = (recs.data ?? []).filter((r) => !hidden.includes(r.id) && r.status !== 'dismissed');
+  const over = insight.data?.status === 'over';
+  const started = msgs.length > 0;
+
+  const applyRec = async (id: string) => {
+    setApplyError(null);
+    try {
+      const res = await apply.mutateAsync(id);
+      haptic('success');
+      if (res.action?.status === 'pending') router.push({ pathname: '/action/[id]', params: { id: res.action.id } });
+      else if (res.action?.status === 'blocked') setApplyError(res.action.reason);
+    } catch (e) {
+      haptic('warning');
+      setApplyError(errorMessage(e));
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
@@ -119,297 +133,306 @@ export default function Assistant() {
         ref={scroll}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        contentContainerStyle={{
-          paddingTop: insets.top + space.md,
-          paddingHorizontal: space.lg,
-          paddingBottom: composerBottom + 130,
-          gap: 14,
-        }}
+        contentContainerStyle={{ paddingBottom: composerBottom + 84, flexGrow: 1 }}
       >
-        {/* Full-bleed hero: cancels the list's padding. */}
-        <View style={{ marginHorizontal: -space.lg, marginTop: -(insets.top + space.md), marginBottom: 6 }}>
-          <HeroHeader title={t("Assistant")}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-              <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: c.brand, alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name="bot" size={26} color={c.onBrand} strokeWidth={2} />
-              </View>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text variant="headline" color="#FFFFFF">
-                  {t('Your money co-pilot')}
-                </Text>
-                <Text variant="footnote" color="rgba(255,255,255,0.6)">
-                  {t('Based on your last 14 days')} · {perms.data?.agentEnabled === false ? t('agent stopped') : (perms.data?.level ?? '…')}
-                </Text>
-              </View>
+        {/* Hero: who you're talking to, and today's check-in in one line (the full check-in lives on Today). */}
+        <HeroHeader title={t('Assistant')}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View
+              style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.brand, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Icon name="bot" size={22} color={c.onBrand} strokeWidth={2} />
             </View>
-          </HeroHeader>
-        </View>
-
-        {insight.data ? <InsightCard insight={insight.data} /> : null}
-
-        {visibleRecs.map((r) => (
-          <Card key={r.id} style={{ padding: 18, gap: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <IconTile name={recIcon[r.id] ?? 'bulb'} bg={c.brandTint} fg={c.brandInk} size={44} iconSize={22} />
-              <View style={{ flex: 1, gap: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Icon name="trend" size={13} color={c.accent} strokeWidth={2.4} />
-                  <Text variant="footnote" color="positive" weight="600" tabular>
-                    Save {formatMoney(r.monthlySaving, cur)} / month
-                  </Text>
-                </View>
-                <Text variant="headline">{r.title}</Text>
-              </View>
+            <View style={{ flex: 1, gap: 1 }}>
+              <Text variant="headline" color="#FFFFFF">
+                {t('Your money co-pilot')}
+              </Text>
+              <Text variant="footnote" color="rgba(255,255,255,0.6)" numberOfLines={1}>
+                {t('Based on your last 14 days')} · {perms.data?.agentEnabled === false ? t('agent stopped') : (perms.data?.level ?? '…')}
+              </Text>
             </View>
-            <Text variant="callout" color="body">
-              {r.body}
-            </Text>
-            {r.status === 'applied' ? (
+          </View>
+          {insight.data ? (
+            <PressableScale
+              onPress={() => router.navigate('/(tabs)')}
+              accessibilityRole="button"
+              accessibilityLabel={`${over ? t('Over plan') : t('On track')}. ${insight.data.headline}`}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                padding: 12,
+                borderRadius: 18,
+                backgroundColor: 'rgba(255,255,255,0.08)',
+              }}
+            >
               <View
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 6,
-                  alignSelf: 'flex-start',
-                  height: 40,
-                  paddingHorizontal: 16,
-                  borderRadius: 20,
-                  backgroundColor: c.positiveTint,
+                  paddingHorizontal: 9,
+                  height: 24,
+                  borderRadius: 12,
+                  justifyContent: 'center',
+                  backgroundColor: over ? '#F5B65C' : c.brand,
                 }}
               >
-                <Icon name="check" size={16} color={c.positiveInk} strokeWidth={2.6} />
-                <Text variant="callout" color="positiveInk" weight="600">
-                  {r.actionType ? t('Sent for your approval') : t('Reminder set')}
+                <Text variant="caption" weight="700" color="#000000">
+                  {over ? t('Over plan') : t('On track')}
                 </Text>
               </View>
-            ) : (
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Button
-                  title={t("Apply")}
-                  icon="check"
-                  size="medium"
-                  loading={apply.isPending && apply.variables === r.id}
-                  disabled={apply.isPending}
-                  onPress={async () => {
-                    setApplyError(null);
-                    try {
-                      const res = await apply.mutateAsync(r.id);
-                      haptic('success');
-                      if (res.action?.status === 'pending') router.push({ pathname: '/action/[id]', params: { id: res.action.id } });
-                      else if (res.action?.status === 'blocked') setApplyError(res.action.reason);
-                    } catch (e) {
-                      haptic('warning');
-                      setApplyError(errorMessage(e));
-                    }
-                  }}
-                />
-                <Button title={t("Not now")} icon="clock" size="medium" variant="secondary" onPress={() => setHidden((h) => [...h, r.id])} />
-              </View>
-            )}
-          </Card>
-        ))}
+              <Text variant="footnote" color="rgba(255,255,255,0.85)" numberOfLines={2} style={{ flex: 1 }}>
+                {insight.data.headline}
+              </Text>
+            </PressableScale>
+          ) : null}
+        </HeroHeader>
 
-        {applyError ? (
-          <View
-            accessibilityLiveRegion="assertive"
-            style={{ flexDirection: 'row', gap: 10, alignItems: 'center', backgroundColor: c.dangerTint, padding: 12, borderRadius: 14 }}
-          >
-            <Icon name="info" size={18} color={c.dangerInk} strokeWidth={2.2} />
-            <Text variant="footnote" color="dangerInk" style={{ flex: 1 }}>
-              {applyError}
-            </Text>
-          </View>
-        ) : null}
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 8, paddingHorizontal: 4 }}>
-          <View style={{ flex: 1, height: 0.5, backgroundColor: c.separator }} />
-          <Text variant="caption" color="secondary" weight="600">
-            {t('Chat')}
-          </Text>
-          <View style={{ flex: 1, height: 0.5, backgroundColor: c.separator }} />
-        </View>
-
-        {msgs.map((m) => {
-          const me = m.who === 'user';
-          // A pending action decided since (here, in Agent or in Telegram) drops its Review card.
-          const a = m.action?.status === 'pending' && !pendingIds.has(m.action.id) ? undefined : m.action;
-          return (
-            <View
-              key={m.id}
-              style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-end', justifyContent: me ? 'flex-end' : 'flex-start' }}
-            >
-              {!me ? <IconTile name="bot" bg={c.brand} fg={c.onBrand} size={28} iconSize={15} /> : null}
-              <View style={{ maxWidth: '80%', gap: 6, alignItems: me ? 'flex-end' : 'flex-start' }}>
-                <View
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    borderRadius: 20,
-                    backgroundColor: me ? c.accent : c.card,
-                  }}
-                >
-                  <Text variant="body" color={me ? c.onAccent : c.label} selectable>
-                    {m.text}
+        {/* Ideas: small cards in one swipeable row instead of a stack of long ones. */}
+        {visibleRecs.length ? (
+          <View style={{ paddingTop: 22, gap: 12 }}>
+            <View style={{ paddingHorizontal: 20 }}>
+              <SectionTitle title={t('Ideas for you')} />
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 20 }}>
+              {visibleRecs.map((r) => (
+                <View key={r.id} style={{ width: 250, backgroundColor: c.card, borderRadius: 22, padding: 16, gap: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <IconTile name={recIcon[r.id] ?? 'bulb'} bg={c.brand} fg={c.onBrand} size={36} iconSize={18} />
+                    <Text variant="footnote" color="positive" weight="700" tabular style={{ flex: 1 }} numberOfLines={1}>
+                      {t('Save {amount} a month', { amount: formatMoney(r.monthlySaving, cur) })}
+                    </Text>
+                    {r.status !== 'applied' ? (
+                      <PressableScale
+                        onPress={() => setHidden((h) => [...h, r.id])}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('Not now')}
+                        hitSlop={8}
+                        style={{ width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Icon name="x" size={14} color={c.secondary} strokeWidth={2.4} />
+                      </PressableScale>
+                    ) : null}
+                  </View>
+                  <Text variant="callout" weight="600" numberOfLines={2} style={{ minHeight: 42 }}>
+                    {r.title}
                   </Text>
-                </View>
-                {a && a.status === 'pending' ? (
-                  <PressableScale
-                    onPress={() => router.push({ pathname: '/action/[id]', params: { id: a.id } })}
-                    accessibilityRole="button"
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 12,
-                      padding: 12,
-                      paddingHorizontal: 14,
-                      borderRadius: 18,
-                      backgroundColor: c.warnTint,
-                    }}
-                  >
-                    <Icon name="transfer" size={20} color={c.warnInk} strokeWidth={2} />
-                    <View style={{ flex: 1 }}>
-                      <Text variant="callout" weight="600" tabular numberOfLines={1} adjustsFontSizeToFit>
-                        Card → Savings · {formatAmount(a.amount ?? 0, cur)}
-                      </Text>
-                      <Text variant="footnote" color="warnInk">
-                        {t('Pending your approval')}
+                  {r.status === 'applied' ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, height: 36 }}>
+                      <Icon name="check" size={15} color={c.positiveInk} strokeWidth={2.6} />
+                      <Text variant="footnote" color="positiveInk" weight="600">
+                        {r.actionType ? t('Sent for your approval') : t('Reminder set')}
                       </Text>
                     </View>
-                    <Text variant="callout" color="warnInk" weight="600">
-                      {t('Review')}
-                    </Text>
-                  </PressableScale>
-                ) : null}
-                {a && a.status === 'blocked' ? (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 5,
-                      backgroundColor: c.dangerTint,
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      borderRadius: 8,
-                    }}
-                  >
-                    <Icon name="ban" size={12} color={c.dangerInk} strokeWidth={2.6} />
-                    <Text variant="caption" color="dangerInk" weight="600">
-                      Blocked by policy · {a.reason.split(':')[0]}
-                    </Text>
-                  </View>
-                ) : null}
-                {a && a.status === 'executed' ? (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 5,
-                      backgroundColor: c.positiveTint,
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      borderRadius: 8,
-                    }}
-                  >
-                    <Icon name="check" size={12} color={c.positiveInk} strokeWidth={2.6} />
-                    <Text variant="caption" color="positiveInk" weight="600">
-                      {t('Done automatically')}
-                    </Text>
-                  </View>
-                ) : null}
+                  ) : (
+                    <Button
+                      title={t('Apply')}
+                      size="small"
+                      loading={apply.isPending && apply.variables === r.id}
+                      disabled={apply.isPending}
+                      onPress={() => void applyRec(r.id)}
+                    />
+                  )}
+                </View>
+              ))}
+            </ScrollView>
+            {applyError ? (
+              <View style={{ paddingHorizontal: 20 }}>
+                <Notice text={applyError} />
               </View>
-            </View>
-          );
-        })}
-        {chat.isPending ? (
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            <IconTile name="bot" bg={c.brand} fg={c.onBrand} size={28} iconSize={15} />
-            <Text variant="footnote" color="secondary">
-              Thinking…
-            </Text>
+            ) : null}
           </View>
         ) : null}
+
+        <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 22, gap: 14 }}>
+          {/* Empty chat: a short welcome and a few questions to start with. */}
+          {!started ? (
+            <View style={{ flex: 1, justifyContent: 'center', gap: 14, paddingVertical: 8 }}>
+              <View style={{ gap: 4, paddingHorizontal: 4 }}>
+                <Text variant="title2">{t('Ask me anything about your money')}</Text>
+                <Text variant="footnote" color="secondary">
+                  {t('I answer with your real numbers and never move money without your OK.')}
+                </Text>
+              </View>
+              <View style={{ gap: 8 }}>
+                {suggestions(cur === 'UZS' ? '500 000' : formatMoney(fromUzs(500_000, cur), cur))
+                  .slice(1)
+                  .map((sg) => (
+                    <PressableScale
+                      key={sg.label}
+                      onPress={() => void send(sg.label)}
+                      accessibilityRole="button"
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        paddingVertical: 12,
+                        paddingHorizontal: 14,
+                        borderRadius: 18,
+                        borderWidth: 1,
+                        borderColor: c.separator,
+                      }}
+                    >
+                      <Icon name={sg.icon} size={18} color={c.label} strokeWidth={1.9} />
+                      <Text variant="callout" style={{ flex: 1 }}>
+                        {sg.label}
+                      </Text>
+                      <Icon name="arrowRight" size={16} color={c.chevron} strokeWidth={2} />
+                    </PressableScale>
+                  ))}
+              </View>
+            </View>
+          ) : null}
+
+          {msgs.map((m) => {
+            const me = m.who === 'user';
+            // A pending action decided since (here, in Agent or in Telegram) drops its Review card.
+            const a = m.action?.status === 'pending' && !pendingIds.has(m.action.id) ? undefined : m.action;
+            return (
+              <View
+                key={m.id}
+                style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-end', justifyContent: me ? 'flex-end' : 'flex-start' }}
+              >
+                {!me ? <IconTile name="bot" bg={c.brand} fg={c.onBrand} size={28} iconSize={15} /> : null}
+                <View style={{ maxWidth: '80%', gap: 6, alignItems: me ? 'flex-end' : 'flex-start' }}>
+                  <View
+                    style={{
+                      paddingVertical: 10,
+                      paddingHorizontal: 14,
+                      borderRadius: 20,
+                      borderBottomRightRadius: me ? 6 : 20,
+                      borderBottomLeftRadius: me ? 20 : 6,
+                      backgroundColor: me ? c.accent : c.card,
+                    }}
+                  >
+                    <Text variant="body" color={me ? c.onAccent : c.label} selectable>
+                      {m.text}
+                    </Text>
+                  </View>
+                  {a && a.status === 'pending' ? (
+                    <PressableScale
+                      onPress={() => router.push({ pathname: '/action/[id]', params: { id: a.id } })}
+                      accessibilityRole="button"
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: 12,
+                        paddingHorizontal: 14,
+                        borderRadius: 18,
+                        backgroundColor: c.warnTint,
+                      }}
+                    >
+                      <Icon name="transfer" size={20} color={c.warnInk} strokeWidth={2} />
+                      <View style={{ flex: 1 }}>
+                        <Text variant="callout" weight="600" tabular numberOfLines={1} adjustsFontSizeToFit>
+                          {t('Card → Savings · {amount}', { amount: formatAmount(a.amount ?? 0, cur) })}
+                        </Text>
+                        <Text variant="footnote" color="warnInk">
+                          {t('Pending your approval')}
+                        </Text>
+                      </View>
+                      <Text variant="callout" color="warnInk" weight="600">
+                        {t('Review')}
+                      </Text>
+                    </PressableScale>
+                  ) : null}
+                  {a && a.status === 'blocked' ? (
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 5,
+                        backgroundColor: c.dangerTint,
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 8,
+                      }}
+                    >
+                      <Icon name="ban" size={12} color={c.dangerInk} strokeWidth={2.6} />
+                      <Text variant="caption" color="dangerInk" weight="600">
+                        {t('Blocked by policy · {code}', { code: a.reason.split(':')[0] ?? '' })}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {a && a.status === 'executed' ? (
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 5,
+                        backgroundColor: c.positiveTint,
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 8,
+                      }}
+                    >
+                      <Icon name="check" size={12} color={c.positiveInk} strokeWidth={2.6} />
+                      <Text variant="caption" color="positiveInk" weight="600">
+                        {t('Done automatically')}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              </View>
+            );
+          })}
+          {chat.isPending ? (
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }} accessibilityLabel={t('Thinking…')}>
+              <IconTile name="bot" bg={c.brand} fg={c.onBrand} size={28} iconSize={15} />
+              <View
+                style={{ paddingVertical: 14, paddingHorizontal: 16, borderRadius: 20, borderBottomLeftRadius: 6, backgroundColor: c.card }}
+              >
+                <LoadingDots color={c.secondary} />
+              </View>
+            </View>
+          ) : null}
+        </View>
       </ScrollView>
 
+      {/* Composer: one field and a lime send button. */}
       <BlurView
         intensity={60}
         tint={dark ? 'dark' : 'light'}
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: composerBottom,
-          paddingTop: 8,
-          paddingBottom: 10,
-          gap: 8,
-          backgroundColor: c.material,
-        }}
+        style={{ position: 'absolute', left: 0, right: 0, bottom: composerBottom, paddingVertical: 10, backgroundColor: c.material }}
       >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ gap: 8, paddingHorizontal: 12 }}
-        >
-          {suggestions(cur === 'UZS' ? '500 000' : formatMoney(fromUzs(500_000, cur), cur)).map((s) => (
-            <PressableScale
-              key={s.label}
-              onPress={() => send(s.label)}
-              accessibilityRole="button"
-              style={{
-                height: 36,
-                paddingHorizontal: 12,
-                borderRadius: 18,
-                backgroundColor: c.card,
-                borderWidth: 0.5,
-                borderColor: c.separator,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
-              <Icon name={s.icon} size={15} color={c.accent} strokeWidth={2} />
-              <Text variant="footnote" weight="500" style={{ fontSize: 14 }}>
-                {s.label}
-              </Text>
-            </PressableScale>
-          ))}
-        </ScrollView>
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', paddingHorizontal: 12 }}>
           <TextInput
-            accessibilityLabel={t("Message FeMate")}
+            accessibilityLabel={t('Message FeMate')}
             value={draft}
             onChangeText={setDraft}
-            placeholder={t("Ask about your money…")}
+            placeholder={t('Ask about your money…')}
             placeholderTextColor={c.secondary}
             returnKeyType="send"
             onSubmitEditing={() => send(draft)}
-            style={{
-              flex: 1,
-              height: 44,
-              paddingHorizontal: 16,
-              borderRadius: 22,
-              borderWidth: 0.5,
-              borderColor: c.separator,
-              backgroundColor: c.card,
-              color: c.label,
-              fontSize: 16,
-            }}
+            style={[
+              {
+                flex: 1,
+                height: 48,
+                paddingHorizontal: 18,
+                borderRadius: 24,
+                borderWidth: 1,
+                borderColor: c.separator,
+                backgroundColor: c.bg,
+                color: c.label,
+                fontSize: 16,
+              },
+              font('400'),
+            ]}
           />
           <PressableScale
             onPress={() => send(draft)}
             accessibilityRole="button"
-            accessibilityLabel={t("Send")}
+            accessibilityLabel={t('Send')}
             disabled={!draft.trim()}
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              backgroundColor: draft.trim() ? c.accent : c.fill2,
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              backgroundColor: draft.trim() ? c.brand : c.fill,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Icon name="arrowUp" size={20} color={draft.trim() ? c.onAccent : c.secondary} strokeWidth={2.4} />
+            <Icon name="arrowUp" size={20} color={draft.trim() ? c.onBrand : c.secondary} strokeWidth={2.4} />
           </PressableScale>
         </View>
       </BlurView>

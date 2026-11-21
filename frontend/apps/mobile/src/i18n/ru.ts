@@ -590,4 +590,12 @@ export const ru: Record<string, string> = {
   cash: 'наличные',
   savings: 'накопления',
   'Spent {amount}': 'Потрачено {amount}',
+  'Ideas for you': 'Идеи для вас',
+  'Ask me anything about your money': 'Спросите что угодно о своих деньгах',
+  'I answer with your real numbers and never move money without your OK.':
+    'Я отвечаю по вашим реальным цифрам и никогда не двигаю деньги без вашего согласия.',
+  'Card → Savings · {amount}': 'Карта → Накопления · {amount}',
+  'Blocked by policy · {code}': 'Заблокировано политикой · {code}',
+  'Thinking…': 'Думаю…',
+  'Save {amount} a month': 'Экономия {amount} в месяц',
 };

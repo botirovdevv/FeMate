@@ -595,4 +595,12 @@ export const uz: Record<string, string> = {
   cash: 'naqd',
   savings: 'jamg‘arma',
   'Spent {amount}': 'Sarflandi {amount}',
+  'Ideas for you': 'Siz uchun g‘oyalar',
+  'Ask me anything about your money': 'Pulingiz haqida istalgan narsani so‘rang',
+  'I answer with your real numbers and never move money without your OK.':
+    'Haqiqiy raqamlaringiz asosida javob beraman va roziligingizsiz hech qachon pul o‘tkazmayman.',
+  'Card → Savings · {amount}': 'Karta → Jamg‘arma · {amount}',
+  'Blocked by policy · {code}': 'Siyosat bo‘yicha bloklandi · {code}',
+  'Thinking…': 'O‘ylayapman…',
+  'Save {amount} a month': 'Oyiga {amount} tejash',
 };
