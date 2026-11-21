@@ -28,6 +28,7 @@ export const keys = {
   audit: ['audit'] as const,
   card: ['card'] as const,
   cardAuthorizations: ['card', 'authorizations'] as const,
+  family: ['family'] as const,
 };
 
 export const useMe = () => useQuery({ queryKey: keys.me, queryFn: api.me });
@@ -46,6 +47,7 @@ export const useActions = (status?: AgentAction['status']) =>
 export const usePermissions = () => useQuery({ queryKey: keys.permissions, queryFn: api.permissions });
 export const useCard = () => useQuery({ queryKey: keys.card, queryFn: api.card });
 export const useCardAuthorizations = () => useQuery({ queryKey: keys.cardAuthorizations, queryFn: api.cardAuthorizations });
+export const useFamily = () => useQuery({ queryKey: keys.family, queryFn: api.family, refetchInterval: 30_000 });
 export const useAudit = () => useQuery({ queryKey: keys.audit, queryFn: () => api.audit(50) });
 
 // Anything that can move money or change rules refreshes balances, actions and the audit log.
@@ -63,6 +65,7 @@ function useInvalidateMoney() {
         keys.recommendations,
         ['summary'],
         keys.card,
+        keys.family,
       ].map((k) => qc.invalidateQueries({ queryKey: k })),
     );
 }
@@ -90,7 +93,7 @@ export function useSetBalance() {
 
 export function useVoiceTransaction() {
   const invalidate = useInvalidateMoney();
-  return useMutation({ mutationFn: api.voiceTransaction, onSettled: invalidate });
+  return useMutation({ mutationFn: (v: { uri: string; family?: boolean }) => api.voiceTransaction(v.uri, v.family), onSettled: invalidate });
 }
 
 export const useSimulate = (currentCostPerDay: number, alternativeCostPerDay: number, daysPerMonth: number) =>
@@ -167,3 +170,19 @@ export function useSimulatePurchase() {
   const invalidate = useInvalidateMoney();
   return useMutation({ mutationFn: api.simulatePurchase, onSuccess: invalidate });
 }
+
+// Family: budget changes, approvals and membership refresh the overview, money (an approval records an expense) and the log.
+function useFamilyMutation<A, R>(fn: (a: A) => Promise<R>) {
+  const invalidate = useInvalidateMoney();
+  return useMutation({ mutationFn: fn, onSettled: invalidate });
+}
+export const useCreateFamily = () => useFamilyMutation(api.createFamily);
+export const useUpdateFamily = () => useFamilyMutation(api.updateFamily);
+export const useDeleteFamily = () => useFamilyMutation(() => api.deleteFamily());
+export const useJoinFamily = () => useFamilyMutation(api.joinFamily);
+export const useLeaveFamily = () => useFamilyMutation(() => api.leaveFamily());
+export const useRemoveFamilyMember = () => useFamilyMutation(api.removeFamilyMember);
+export const useFamilyInvite = () => useMutation({ mutationFn: () => api.familyInvite() });
+export const useRequestFamilyCard = () => useFamilyMutation(api.requestFamilyCard);
+export const useApproveFamilyRequest = () => useFamilyMutation(api.approveFamilyRequest);
+export const useRejectFamilyRequest = () => useFamilyMutation(api.rejectFamilyRequest);

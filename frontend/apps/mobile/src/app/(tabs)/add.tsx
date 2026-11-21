@@ -1,8 +1,8 @@
-import { categorize, convertMoney, toMinor, type Category, type Transaction } from '@femate/shared';
+import { categorize, convertMoney, toMinor, type Category, type FamilyRequest, type Transaction } from '@femate/shared';
 import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, TextInput, View } from 'react-native';
+import { Animated, Easing, Pressable, Switch, TextInput, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
@@ -11,7 +11,7 @@ import { errorMessage } from '@/lib/api';
 import { categoryIcon } from '@/lib/categories';
 import { useCurrency } from '@/lib/currency';
 import { categoryLabel, formatAmount, formatMoney } from '@/lib/format';
-import { useAccounts, useCreateTransaction, useVoiceTransaction } from '@/lib/queries';
+import { useAccounts, useCreateTransaction, useFamily, useVoiceTransaction } from '@/lib/queries';
 import { radius, useTheme } from '@/theme';
 
 const EXAMPLES: { label: string; icon: IconName }[] = [
@@ -61,6 +61,12 @@ export default function Add() {
   const [text, setText] = useState('');
   const [override, setOverride] = useState<Category | null>(null);
   const [saved, setSaved] = useState<{ tx: Transaction; transcript?: string } | null>(null);
+  // A family spend over the approval limit goes to the manager instead of being recorded.
+  const [pending, setPending] = useState<{ request: FamilyRequest; transcript?: string } | null>(null);
+  const family = useFamily();
+  const [fromFamily, setFromFamily] = useState(false);
+  const inFamily = !!family.data;
+  const payFamily = inFamily && fromFamily;
   const [error, setError] = useState<string | null>(null);
   const stopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
@@ -95,12 +101,13 @@ export default function Add() {
   const cash = accounts.data?.find((a) => a.type === 'cash');
   const recording = recState.isRecording;
   const busy = voice.isPending;
-  const showResult = parsed.amount !== null && !saved && !recording && !busy;
+  const showResult = parsed.amount !== null && !saved && !pending && !recording && !busy;
 
   const edit = (t: string) => {
     setText(t);
     setOverride(null);
     setSaved(null);
+    setPending(null);
     setError(null);
   };
 
@@ -110,11 +117,13 @@ export default function Add() {
     setError(null);
     try {
       const description = parsed.description.trim() || categoryLabel[category];
-      const tx = await create.mutateAsync(override ? { amount: enteredMinor, currency: entered, category, description } : { text });
+      const body = override ? { amount: enteredMinor, currency: entered, category, description } : { text };
+      const out = await create.mutateAsync(payFamily ? { ...body, family: true } : body);
       haptic('success');
       setText('');
       setOverride(null);
-      setSaved({ tx });
+      if ('pending' in out) setPending({ request: out.pending });
+      else setSaved({ tx: out });
     } catch (e) {
       setError(errorMessage(e));
     }
@@ -123,6 +132,7 @@ export default function Add() {
   const startRecording = async () => {
     setError(null);
     setSaved(null);
+    setPending(null);
     const perm = await AudioModule.requestRecordingPermissionsAsync();
     if (!perm.granted) {
       setError('Microphone access is off. Allow it in your phone’s Settings, or type the expense.');
@@ -158,10 +168,11 @@ export default function Add() {
       return;
     }
     try {
-      const res = await voice.mutateAsync(uri);
+      const res = await voice.mutateAsync({ uri, family: payFamily });
       haptic('success');
       setText('');
-      setSaved({ tx: res.transaction, transcript: res.transcript });
+      if ('pending' in res) setPending({ request: res.pending, transcript: res.transcript });
+      else setSaved({ tx: res.transaction, transcript: res.transcript });
     } catch (e) {
       haptic('warning');
       setError(errorMessage(e));
@@ -236,6 +247,29 @@ export default function Add() {
         ))}
       </View>
 
+      {inFamily && family.data ? (
+        <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 }}>
+          <IconTile name="family" bg={payFamily ? c.strong : c.fill} fg={payFamily ? c.onStrong : c.label} size={36} iconSize={19} rounded={18} />
+          <View style={{ flex: 1, gap: 1 }}>
+            <Text variant="callout" weight="600">
+              From family budget
+            </Text>
+            <Text variant="footnote" color="secondary" tabular numberOfLines={1}>
+              {formatMoney(family.data.budget.remaining, family.data.family.currency)} left in {family.data.family.name}
+            </Text>
+          </View>
+          <Switch
+            accessibilityLabel="Pay from the family budget"
+            value={payFamily}
+            onValueChange={(v) => {
+              haptic('light');
+              setFromFamily(v);
+            }}
+            trackColor={{ true: c.strong, false: c.fill2 }}
+          />
+        </Card>
+      ) : null}
+
       {showResult ? (
         <Card style={{ gap: 16 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -307,11 +341,11 @@ export default function Add() {
                 Paid from
               </Text>
               <Text variant="callout" weight="600" tabular numberOfLines={1}>
-                Cash · {formatAmount(cash?.balance ?? 0, cur)} left
+                Cash · {formatAmount(cash?.balance ?? 0, cur)} left{payFamily ? ' · family budget' : ''}
               </Text>
             </View>
           </View>
-          <Button title="Save expense" icon="check" onPress={save} loading={create.isPending} />
+          <Button title={payFamily ? 'Save as family spend' : 'Save expense'} icon="check" onPress={save} loading={create.isPending} />
         </Card>
       ) : null}
 
@@ -337,7 +371,8 @@ export default function Add() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                 <Icon name="check" size={13} color={c.accent} strokeWidth={2.6} />
                 <Text variant="footnote" color="accent" weight="600">
-                  Added to today{saved.transcript ? ' from your voice note' : ''}
+                  Added to today{saved.tx.familyId ? ' · family budget' : ''}
+                  {saved.transcript ? ' from your voice note' : ''}
                 </Text>
               </View>
             </View>
@@ -349,6 +384,28 @@ export default function Add() {
                 “{saved.transcript}”
               </Text>
             </View>
+          ) : null}
+          <Button title="Add another" icon="plus" variant="secondary" size="medium" onPress={() => edit('')} />
+        </Card>
+      ) : null}
+
+      {pending ? (
+        <Card style={{ gap: 12 }}>
+          <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <IconTile name="clock" bg={c.warnTint} fg={c.warnInk} size={44} iconSize={22} rounded={22} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text variant="headline" tabular>
+                {formatMoney(pending.request.amount, family.data?.family.currency ?? cur)} · {pending.request.description}
+              </Text>
+              <Text variant="footnote" color="secondary">
+                Over the family approval limit, so it’s sent to {family.data?.family.managerName ?? 'the manager'}. It’s recorded once approved.
+              </Text>
+            </View>
+          </View>
+          {pending.transcript ? (
+            <Text variant="callout" color="body" style={{ fontStyle: 'italic' }} selectable>
+              “{pending.transcript}”
+            </Text>
           ) : null}
           <Button title="Add another" icon="plus" variant="secondary" size="medium" onPress={() => edit('')} />
         </Card>

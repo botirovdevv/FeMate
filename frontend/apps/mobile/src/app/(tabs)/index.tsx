@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/Icon';
+import { FamilySummary } from '@/components/FamilySummary';
 import { InsightCard } from '@/components/InsightCard';
 import { Screen } from '@/components/Screen';
 import { Banner, Card, ErrorRow, IconTile, PressableScale, ProgressBar, Text } from '@/components/ui';
@@ -179,6 +180,9 @@ export default function Home() {
 
       {/* 2. What to do about it: the assistant's check-in, only when something needs attention. */}
       {insight.data?.status === 'over' ? <InsightCard insight={insight.data} compact /> : null}
+
+      {/* Shared family budget, when the user is in a family. */}
+      <FamilySummary />
 
       {/* 3. Quick actions: equal tiles, labels under the icons so they never wrap. */}
       <View style={{ flexDirection: 'row', gap: 8 }}>

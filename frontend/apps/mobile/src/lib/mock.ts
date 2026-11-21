@@ -19,8 +19,17 @@ import {
   type CreateTransactionBody,
   type DailyInsight,
   type DailySummary,
+  type CreateFamilyBody,
   type DepositBody,
+  type Family,
+  type FamilyCardRequestBody,
+  type FamilyInvite,
+  type FamilyMemberTotal,
+  type FamilyOverview,
+  type FamilyRequest,
   type LoginBody,
+  type PendingFamilySpend,
+  type UpdateFamilyBody,
   type MoneyResponse,
   type Page,
   type PeriodSummary,
@@ -310,6 +319,77 @@ const MOCK_PAN = '4111111289144142';
 const VOICE_SAMPLES = ['Groceries at the bazaar 45k', 'Taxi home 20k', 'Pharmacy 35k'];
 let voiceTurn = 0;
 
+interface MockFamily {
+  family: Family;
+  members: FamilyMemberTotal[];
+  requests: FamilyRequest[];
+}
+
+function newFamily(name: string, monthlyBudget: number, approvalThreshold: number, others: FamilyMemberTotal[]): MockFamily {
+  const now = new Date().toISOString();
+  return {
+    family: { id: newId('fam'), name, currency: db.user.currency, monthlyBudget, approvalThreshold, managerName: db.user.name, createdAt: now },
+    members: [{ userId: db.user.id, name: db.user.name, role: 'manager', spent: 0, joinedAt: now }, ...others],
+    requests: [],
+  };
+}
+
+function seedFamily(): MockFamily {
+  const f = newFamily(`${db.user.name.split(' ')[0]}’s family`, 3_000_000, 200_000, [
+    { userId: 'usr_malika', name: 'Malika', role: 'member', spent: 395_000, joinedAt: at(10, 18, 0) },
+  ]);
+  f.requests.push({
+    id: newId('freq'),
+    kind: 'expense',
+    amount: 450_000,
+    category: 'education',
+    description: 'School fee',
+    status: 'pending',
+    memberName: 'Malika',
+    mine: false,
+    expiresAt: new Date(Date.now() + 20 * 3_600_000).toISOString(),
+    createdAt: at(0, 9, 30),
+  });
+  return f;
+}
+
+let fam: MockFamily | null = seedFamily();
+
+function requireFamily(): MockFamily {
+  if (!fam) throw new ApiError('NOT_IN_FAMILY', 'You are not in a family yet. Create one or join with a code.');
+  return fam;
+}
+
+function familyMember(userId: string): FamilyMemberTotal {
+  const m = requireFamily().members.find((x) => x.userId === userId);
+  if (!m) throw new ApiError('NOT_IN_FAMILY', 'You are not in a family yet.');
+  return m;
+}
+
+/** Same order as the server's Family Guard, for the manager (no approval step). */
+function familyGuard(amount: number) {
+  if (!fam) throw new ApiError('NOT_IN_FAMILY', 'You are not in a family, so this can’t be paid from a family budget.');
+  const spent = fam.members.reduce((n, m) => n + m.spent, 0);
+  if (spent + amount > fam.family.monthlyBudget) {
+    const fmt = (n: number) => formatMoney(n, fam!.family.currency);
+    log({ actor: 'user', event: 'family.spend', decision: 'blocked', reason: `${fmt(amount)} is over the family budget.` });
+    throw new ApiError('FAMILY_BUDGET_EXCEEDED', `${fmt(amount)} is more than the ${fmt(Math.max(0, fam.family.monthlyBudget - spent))} left in the ${fam.family.name} budget this month.`);
+  }
+}
+
+function familyOverview(): FamilyOverview | null {
+  if (!fam) return null;
+  const spent = fam.members.reduce((n, m) => n + m.spent, 0);
+  return {
+    family: { ...fam.family, managerName: db.user.name },
+    role: 'manager',
+    budget: { limit: fam.family.monthlyBudget, spent, remaining: Math.max(0, fam.family.monthlyBudget - spent) },
+    memberCount: fam.members.length,
+    members: fam.members.map((m) => (m.role === 'manager' ? { ...m, name: db.user.name } : { ...m })),
+    requests: fam.requests.map((r) => ({ ...r })),
+  };
+}
+
 function log(entry: Omit<AuditEntry, 'id' | 'createdAt' | 'permissionLevel'>) {
   db.audit.unshift({ id: newId('aud'), createdAt: new Date().toISOString(), permissionLevel: db.permissions.level, ...entry });
 }
@@ -379,6 +459,9 @@ const policyMessage: Record<PolicyErrorCode, string> = {
   PER_ACTION_LIMIT: 'This is over your per-action limit.',
   DAILY_LIMIT: 'This would go over today’s agent limit.',
   INSUFFICIENT_FUNDS: 'Your card balance is too low.',
+  NOT_IN_FAMILY: 'You are not in a family yet.',
+  FAMILY_BUDGET_EXCEEDED: 'That is more than is left in the family budget.',
+  FAMILY_APPROVAL_REQUIRED: 'This needs the family manager’s approval.',
 };
 
 function executeTransfer(amount: number) {
@@ -558,7 +641,7 @@ export const mockApi = {
     await delay(150);
     return { items: db.transactions.slice(0, limit), nextCursor: null };
   },
-  async createTransaction(body: CreateTransactionBody): Promise<Transaction> {
+  async createTransaction(body: CreateTransactionBody): Promise<Transaction | PendingFamilySpend> {
     await delay(400);
     const parsed =
       'text' in body
@@ -569,6 +652,8 @@ export const mockApi = {
             description: body.description,
           };
     if (!parsed.amount || parsed.amount <= 0) throw new ApiError('INVALID_ARGS', 'Add an amount, for example “taxi 20k”.');
+    // The demo user manages the family, so a family spend never waits for approval; it can still be blocked.
+    if (body.family) familyGuard(parsed.amount);
     const cash = account('cash');
     const tx: Transaction = {
       id: newId('tx'),
@@ -579,17 +664,23 @@ export const mockApi = {
       description: parsed.description,
       source: 'manual',
       occurredAt: new Date().toISOString(),
+      ...(body.family && fam ? { familyId: fam.family.id } : {}),
     };
     cash.balance -= parsed.amount;
     db.transactions.unshift(tx);
+    if (body.family) {
+      familyMember(db.user.id).spent += parsed.amount;
+      log({ actor: 'user', event: 'family.spend', decision: 'allowed', reason: `${formatMoney(parsed.amount, db.user.currency)} for “${tx.description}” paid from the family budget.` });
+    }
     return tx;
   },
-  async voiceTransaction(_audioUri: string): Promise<{ transcript: string; transaction: Transaction }> {
+  async voiceTransaction(_audioUri: string, family = false): Promise<{ transcript: string; transaction: Transaction } | ({ transcript: string } & PendingFamilySpend)> {
     await delay(1200); // upload + speech-to-text round trip
     const transcript = VOICE_SAMPLES[voiceTurn++ % VOICE_SAMPLES.length] ?? '';
-    const transaction = await mockApi.createTransaction({ text: transcript });
-    transaction.source = 'voice';
-    return { transcript, transaction };
+    const out = await mockApi.createTransaction({ text: transcript, family });
+    if ('pending' in out) return { transcript, pending: out.pending };
+    out.source = 'voice';
+    return { transcript, transaction: out };
   },
   async dailySummary(): Promise<DailySummary> {
     await delay(120);
@@ -830,6 +921,7 @@ export const mockApi = {
       expYear: '2031',
       frozen: false,
       blockOverBudget: true,
+      payFromFamily: false,
       accountId: acc.id,
       createdAt: new Date().toISOString(),
     };
@@ -846,6 +938,7 @@ export const mockApi = {
   async updateCard(body: UpdateCardBody): Promise<PaymentCard> {
     await delay(250);
     if (!db.card) throw new ApiError('NO_CARD', 'You don’t have a FeMate card yet.');
+    if (body.payFromFamily && !fam) throw new ApiError('NOT_IN_FAMILY', 'Join or create a family before paying from a family budget.');
     db.card = { ...db.card, ...body };
     if (body.frozen !== undefined) {
       log({
@@ -902,6 +995,91 @@ export const mockApi = {
     db.cardAuthorizations.unshift(auth);
     log({ actor: 'system', event: 'card.authorization', decision: auth.approved ? 'allowed' : 'blocked', reason });
     return { authorization: auth };
+  },
+  // Family budget: the demo user manages "Aziz's family" with one member (Malika) and a request waiting.
+  async family(): Promise<FamilyOverview | null> {
+    await delay(150);
+    return familyOverview();
+  },
+  async createFamily(b: CreateFamilyBody): Promise<FamilyOverview> {
+    await delay(400);
+    if (fam) throw new ApiError('ALREADY_IN_FAMILY', 'You are already in a family. Leave it first.');
+    fam = newFamily(b.name, b.monthlyBudget, b.approvalThreshold, []);
+    log({ actor: 'user', event: 'family.create', decision: 'info', reason: `Family “${b.name}” created.` });
+    return familyOverview()!;
+  },
+  async updateFamily(b: UpdateFamilyBody): Promise<FamilyOverview> {
+    await delay(250);
+    const f = requireFamily();
+    f.family = { ...f.family, ...b };
+    log({ actor: 'user', event: 'family.update', decision: 'info', reason: 'Family settings changed.' });
+    return familyOverview()!;
+  },
+  async deleteFamily(): Promise<{ ok: true }> {
+    await delay(300);
+    requireFamily();
+    fam = null;
+    if (db.card) db.card.payFromFamily = false;
+    for (const t of db.transactions) delete t.familyId;
+    return { ok: true };
+  },
+  async familyInvite(): Promise<FamilyInvite> {
+    await delay(300);
+    requireFamily();
+    const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const code = Array.from({ length: 6 }, () => abc[Math.floor(Math.random() * abc.length)]).join('');
+    return { code, expiresAt: new Date(Date.now() + 24 * 3_600_000).toISOString() };
+  },
+  async joinFamily(_code: string): Promise<FamilyOverview> {
+    await delay(500);
+    if (fam) throw new ApiError('ALREADY_IN_FAMILY', 'You are already in a family. Leave it first.');
+    // Offline there is no one else's family to join.
+    throw new ApiError('INVALID_CODE', 'That code is wrong, already used or expired. Ask for a new one.');
+  },
+  async leaveFamily(): Promise<{ ok: true }> {
+    await delay(300);
+    throw new ApiError('MANAGER_CANNOT_LEAVE', 'As the manager you can’t leave. Delete the family instead.');
+  },
+  async removeFamilyMember(userId: string): Promise<FamilyOverview> {
+    await delay(300);
+    const f = requireFamily();
+    f.members = f.members.filter((m) => m.userId !== userId || m.role === 'manager');
+    for (const r of f.requests) if (r.status === 'pending' && r.memberName !== db.user.name) r.status = 'expired';
+    return familyOverview()!;
+  },
+  async requestFamilyCard(_b: FamilyCardRequestBody): Promise<FamilyRequest> {
+    await delay(300);
+    throw new ApiError('NOT_NEEDED', 'As the manager you don’t need approval for card purchases.');
+  },
+  async approveFamilyRequest(id: string): Promise<FamilyRequest> {
+    await delay(400);
+    const f = requireFamily();
+    const r = f.requests.find((x) => x.id === id);
+    if (!r) throw new ApiError('NOT_FOUND', 'Request not found.');
+    if (r.status !== 'pending') throw new ApiError('NOT_PENDING', `This request is already ${r.status}.`);
+    const spent = f.members.reduce((n, m) => n + m.spent, 0);
+    if (spent + r.amount > f.family.monthlyBudget) {
+      throw new ApiError('FAMILY_BUDGET_EXCEEDED', `${formatMoney(r.amount, f.family.currency)} is more than what’s left in the budget this month.`);
+    }
+    r.status = r.kind === 'expense' ? 'used' : 'approved';
+    r.decidedAt = new Date().toISOString();
+    if (r.kind === 'expense') {
+      const m = f.members.find((x) => x.name === r.memberName);
+      if (m) m.spent += r.amount;
+    }
+    log({ actor: 'user', event: 'family.approve', decision: 'allowed', reason: `Approved ${r.memberName}'s request: ${formatMoney(r.amount, f.family.currency)} for “${r.description}”.` });
+    return { ...r };
+  },
+  async rejectFamilyRequest(id: string): Promise<FamilyRequest> {
+    await delay(300);
+    const f = requireFamily();
+    const r = f.requests.find((x) => x.id === id);
+    if (!r) throw new ApiError('NOT_FOUND', 'Request not found.');
+    if (r.status !== 'pending') throw new ApiError('NOT_PENDING', `This request is already ${r.status}.`);
+    r.status = 'rejected';
+    r.decidedAt = new Date().toISOString();
+    log({ actor: 'user', event: 'family.reject', decision: 'blocked', reason: `Declined ${r.memberName}'s request for “${r.description}”.` });
+    return { ...r };
   },
   async telegramLinkCode(): Promise<{ code: string; expiresAt: string }> {
     await delay(300);

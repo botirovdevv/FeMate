@@ -94,7 +94,7 @@ describe('mock API rules (PLAN.md §8, §9)', () => {
     const { mockApi } = await fresh();
     const res = await mockApi.voiceTransaction('file://voice.m4a');
     expect(res.transcript).toBe('Groceries at the bazaar 45k');
-    expect(res.transaction).toMatchObject({ amount: 45_000, category: 'food', source: 'voice' });
+    expect('transaction' in res && res.transaction).toMatchObject({ amount: 45_000, category: 'food', source: 'voice' });
   });
 
   it('tops up, moves between own accounts and corrects a balance, none of it as spending', async () => {
@@ -110,5 +110,38 @@ describe('mock API rules (PLAN.md §8, §9)', () => {
     const fix = await mockApi.setBalance({ account: 'cash', balance: 10_000 });
     expect(fix.transaction).toMatchObject({ description: 'Balance correction', direction: 'out' });
     expect((await mockApi.dailySummary()).todaySpent).toBe(spent);
+  });
+});
+
+describe('family budget (mock)', () => {
+  it('starts with a demo family managed by the user, with one request waiting', async () => {
+    const { mockApi } = await fresh();
+    const o = await mockApi.family();
+    expect(o?.role).toBe('manager');
+    expect(o?.budget).toEqual({ limit: 3_000_000, spent: 395_000, remaining: 2_605_000 });
+    expect(o?.requests.filter((r) => r.status === 'pending')).toHaveLength(1);
+  });
+
+  it('records a family spend, blocks one past the budget, and approves a request', async () => {
+    const { mockApi } = await fresh();
+    const tx = await mockApi.createTransaction({ amount: 100_000, category: 'food', description: 'Groceries', family: true });
+    expect('familyId' in tx && tx.familyId).toBeTruthy();
+    await expect(mockApi.createTransaction({ amount: 9_000_000, category: 'shopping', description: 'Sofa', family: true })).rejects.toMatchObject({
+      code: 'FAMILY_BUDGET_EXCEEDED',
+    });
+    const id = (await mockApi.family())!.requests[0]!.id;
+    expect((await mockApi.approveFamilyRequest(id)).status).toBe('used');
+    expect((await mockApi.family())?.budget.spent).toBe(395_000 + 100_000 + 450_000);
+    await expect(mockApi.approveFamilyRequest(id)).rejects.toMatchObject({ code: 'NOT_PENDING' });
+  });
+
+  it('deleting the family turns family card payment off', async () => {
+    const { mockApi } = await fresh();
+    await mockApi.issueCard();
+    await mockApi.updateCard({ payFromFamily: true });
+    await mockApi.deleteFamily();
+    expect(await mockApi.family()).toBeNull();
+    expect((await mockApi.card()).card?.payFromFamily).toBe(false);
+    await expect(mockApi.updateCard({ payFromFamily: true })).rejects.toMatchObject({ code: 'NOT_IN_FAMILY' });
   });
 });

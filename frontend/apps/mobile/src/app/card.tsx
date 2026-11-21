@@ -10,7 +10,7 @@ import { api, errorMessage } from '@/lib/api';
 import { categoryIcon } from '@/lib/categories';
 import { useCurrency } from '@/lib/currency';
 import { formatMoney, formatTime } from '@/lib/format';
-import { useAccounts, useCard, useCardAuthorizations, useIssueCard, useSimulatePurchase, useUpdateCard } from '@/lib/queries';
+import { useAccounts, useCard, useCardAuthorizations, useFamily, useIssueCard, useSimulatePurchase, useUpdateCard } from '@/lib/queries';
 import { radius, useTheme } from '@/theme';
 
 // Test purchases for the sandbox card: amounts in UZS, shown in the user's currency.
@@ -188,6 +188,7 @@ export default function CardScreen() {
   const [last, setLast] = useState<CardAuthorization | null>(null);
 
   const card = status.data?.card ?? null;
+  const family = useFamily().data;
   const funding = useAccounts().data?.find((a) => a.id === card?.accountId);
 
   const reveal = async () => {
@@ -203,7 +204,7 @@ export default function CardScreen() {
     }
   };
 
-  const toggle = (b: { frozen?: boolean; blockOverBudget?: boolean }) => {
+  const toggle = (b: { frozen?: boolean; blockOverBudget?: boolean; payFromFamily?: boolean }) => {
     haptic('light');
     setError(null);
     update.mutate(b, { onError: (e) => setError(errorMessage(e)) });
@@ -349,7 +350,7 @@ export default function CardScreen() {
                 icon="target"
                 tile="#FF9500"
                 title="Block over-budget purchases"
-                last
+                last={!family && !card.payFromFamily}
                 right={
                   <Switch
                     value={card.blockOverBudget}
@@ -359,9 +360,31 @@ export default function CardScreen() {
                   />
                 }
               />
+              {family || card.payFromFamily ? (
+                <ListRow
+                  icon="family"
+                  tile="#1C1C1E"
+                  title="Pay from family budget"
+                  last
+                  onPress={() => router.push('/family')}
+                  right={
+                    <Switch
+                      value={card.payFromFamily}
+                      onValueChange={(v) => toggle({ payFromFamily: v })}
+                      trackColor={{ true: '#34C759', false: c.fill2 }}
+                      accessibilityLabel="Pay from family budget"
+                    />
+                  }
+                />
+              ) : null}
             </View>
             <Text variant="footnote" color="secondary" style={{ paddingHorizontal: 16, paddingTop: 8 }}>
               A purchase that would take a category past its monthly budget is declined. Frozen cards and low balances are always declined.
+              {card.payFromFamily && family
+                ? ` Purchases also count against ${family.family.name}: declined past its budget${
+                    family.role === 'member' ? `, and over ${formatMoney(family.family.approvalThreshold, family.family.currency)} unless ${family.family.managerName} approved it first` : ''
+                  }.`
+                : ''}
             </Text>
           </View>
 

@@ -6,6 +6,7 @@ import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/Icon';
+import { useSlate } from '@/components/slate';
 import { Button, Text } from '@/components/ui';
 
 import { queryClient } from '@/lib/queries';
@@ -32,6 +33,7 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 export default function RootLayout() {
   const hydrate = useSession((s) => s.hydrate);
   const { c, dark } = useTheme();
+  const slate = useSlate();
 
   useEffect(() => {
     void hydrate();
@@ -80,6 +82,20 @@ export default function RootLayout() {
               contentStyle: { backgroundColor: c.sheet },
             }}
           />
+          <Stack.Screen name="family/index" options={{ contentStyle: { backgroundColor: slate.bg } }} />
+          {(['family/create', 'family/join', 'family/budget', 'family/invite', 'family/request'] as const).map((name) => (
+            <Stack.Screen
+              key={name}
+              name={name}
+              options={{
+                presentation: 'formSheet',
+                sheetAllowedDetents: name === 'family/invite' || name === 'family/join' ? [0.7] : [0.92],
+                sheetGrabberVisible: true,
+                sheetCornerRadius: 28,
+                contentStyle: { backgroundColor: slate.bg },
+              }}
+            />
+          ))}
         </Stack>
       </QueryClientProvider>
     </SafeAreaProvider>

@@ -14,8 +14,15 @@ import type {
   CreateTransactionBody,
   DailyInsight,
   DailySummary,
+  CreateFamilyBody,
   DepositBody,
+  FamilyCardRequestBody,
+  FamilyInvite,
+  FamilyOverview,
+  FamilyRequest,
   LoginBody,
+  PendingFamilySpend,
+  UpdateFamilyBody,
   MoneyResponse,
   Page,
   PaymentCard,
@@ -118,7 +125,9 @@ const qs = (params: Record<string, string | number | undefined>) => {
 // POST /transactions/voice (multipart field "audio"). Expo replaces the global fetch with expo/fetch,
 // which can't send React Native's { uri, name, type } parts, so native appends an expo-file-system File.
 // On web the recorder gives a blob: URL, so the blob itself is appended.
-async function uploadVoice(uri: string): Promise<{ transcript: string; transaction: Transaction }> {
+type VoiceResult = { transcript: string; transaction: Transaction } | ({ transcript: string } & PendingFamilySpend);
+
+async function uploadVoice(uri: string, family: boolean): Promise<VoiceResult> {
   const form = new FormData();
   if (Platform.OS === 'web') {
     const blob = await (await fetch(uri)).blob();
@@ -130,7 +139,7 @@ async function uploadVoice(uri: string): Promise<{ transcript: string; transacti
   let res: Response;
   try {
     res = await fetchWithTimeout(
-      `${BASE_URL}/transactions/voice`,
+      `${BASE_URL}/transactions/voice${family ? '?family=true' : ''}`,
       {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -142,7 +151,7 @@ async function uploadVoice(uri: string): Promise<{ transcript: string; transacti
     throw networkError(e);
   }
   if (res.status === 401 && token) await sessionEnded();
-  const data = (await res.json().catch(() => null)) as { transcript: string; transaction: Transaction } | ApiErrorBody | null;
+  const data = (await res.json().catch(() => null)) as VoiceResult | ApiErrorBody | null;
   if (!res.ok) {
     const err = (data as ApiErrorBody | null)?.error;
     if (err?.code === 'STT_UNAVAILABLE' || res.status === 503) {
@@ -150,11 +159,11 @@ async function uploadVoice(uri: string): Promise<{ transcript: string; transacti
     }
     throw new ApiError(err?.code ?? `HTTP_${res.status}`, err?.message ?? 'Couldn’t process the recording. Try again.');
   }
-  return data as { transcript: string; transaction: Transaction };
+  return data as VoiceResult;
 }
 
 export const api = {
-  voiceTransaction: (uri: string) => (usingMock ? mockApi.voiceTransaction(uri) : uploadVoice(uri)),
+  voiceTransaction: (uri: string, family = false) => (usingMock ? mockApi.voiceTransaction(uri, family) : uploadVoice(uri, family)),
   login: (b: LoginBody) => (usingMock ? mockApi.login(b) : http<AuthResponse>('POST', '/auth/login', b)),
   register: (b: RegisterBody) => (usingMock ? mockApi.register(b) : http<AuthResponse>('POST', '/auth/register', b)),
   me: () => (usingMock ? mockApi.me() : http<User>('GET', '/me')),
@@ -166,7 +175,9 @@ export const api = {
   setBalance: (b: SetBalanceBody) => (usingMock ? mockApi.setBalance(b) : http<MoneyResponse>('PUT', '/accounts/balance', b)),
   transactions: (limit = 50) => (usingMock ? mockApi.transactions(limit) : http<Page<Transaction>>('GET', `/transactions${qs({ limit })}`)),
   createTransaction: (b: CreateTransactionBody) =>
-    usingMock ? mockApi.createTransaction(b) : http<Transaction>('POST', '/transactions', b, 'text' in b ? AI_TIMEOUT_MS : TIMEOUT_MS),
+    usingMock
+      ? mockApi.createTransaction(b)
+      : http<Transaction | PendingFamilySpend>('POST', '/transactions', b, 'text' in b ? AI_TIMEOUT_MS : TIMEOUT_MS),
   dailySummary: () => (usingMock ? mockApi.dailySummary() : http<DailySummary>('GET', '/summary/daily')),
   insight: () => (usingMock ? mockApi.insight() : http<DailyInsight>('GET', '/summary/insight')),
   periodSummary: (from: Date, to: Date) =>
@@ -199,6 +210,21 @@ export const api = {
   cardAuthorizations: () => (usingMock ? mockApi.cardAuthorizations() : http<CardAuthorization[]>('GET', '/card/authorizations')),
   simulatePurchase: (b: SimulatePurchaseBody) =>
     usingMock ? mockApi.simulatePurchase(b) : http<SimulatePurchaseResponse>('POST', '/card/simulate', b),
+  family: () => (usingMock ? mockApi.family() : http<FamilyOverview | null>('GET', '/family')),
+  createFamily: (b: CreateFamilyBody) => (usingMock ? mockApi.createFamily(b) : http<FamilyOverview>('POST', '/family', b)),
+  updateFamily: (b: UpdateFamilyBody) => (usingMock ? mockApi.updateFamily(b) : http<FamilyOverview>('PATCH', '/family', b)),
+  deleteFamily: () => (usingMock ? mockApi.deleteFamily() : http<{ ok: true }>('DELETE', '/family')),
+  familyInvite: () => (usingMock ? mockApi.familyInvite() : http<FamilyInvite>('POST', '/family/invites')),
+  joinFamily: (code: string) => (usingMock ? mockApi.joinFamily(code) : http<FamilyOverview>('POST', '/family/join', { code })),
+  leaveFamily: () => (usingMock ? mockApi.leaveFamily() : http<{ ok: true }>('POST', '/family/leave')),
+  removeFamilyMember: (userId: string) =>
+    usingMock ? mockApi.removeFamilyMember(userId) : http<FamilyOverview>('DELETE', `/family/members/${encodeURIComponent(userId)}`),
+  requestFamilyCard: (b: FamilyCardRequestBody) =>
+    usingMock ? mockApi.requestFamilyCard(b) : http<FamilyRequest>('POST', '/family/requests', b),
+  approveFamilyRequest: (id: string) =>
+    usingMock ? mockApi.approveFamilyRequest(id) : http<FamilyRequest>('POST', `/family/requests/${encodeURIComponent(id)}/approve`),
+  rejectFamilyRequest: (id: string) =>
+    usingMock ? mockApi.rejectFamilyRequest(id) : http<FamilyRequest>('POST', `/family/requests/${encodeURIComponent(id)}/reject`),
   telegramLinkCode: () =>
     usingMock ? mockApi.telegramLinkCode() : http<{ code: string; expiresAt: string }>('POST', '/telegram/link-code'),
 };

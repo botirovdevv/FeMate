@@ -12,7 +12,7 @@ import { api, errorMessage, usingMock } from '@/lib/api';
 import { useCurrency } from '@/lib/currency';
 import { formatAmount } from '@/lib/format';
 import { disableNotifications, enableNotifications, scheduleDailyReport } from '@/lib/notifications';
-import { useDailySummary, useMe, usePermissions, useUpdateMe } from '@/lib/queries';
+import { useDailySummary, useFamily, useMe, usePermissions, useUpdateMe } from '@/lib/queries';
 import { useSession } from '@/store/session';
 import { useSettings, type Appearance } from '@/store/settings';
 import { useTheme } from '@/theme';
@@ -36,6 +36,7 @@ export default function Settings() {
   const cur = useCurrency();
   const { c, dark } = useTheme();
   const me = useMe();
+  const family = useFamily();
   const daily = useDailySummary();
   const perms = usePermissions();
   const { appearance, setAppearance, pushEnabled, serverPush, setPushEnabled } = useSettings();
@@ -332,6 +333,20 @@ export default function Settings() {
           />
         ))}
       </PickerSheet>
+
+      <View>
+        <SectionLabel>Family</SectionLabel>
+        <View style={group}>
+          <ListRow
+            icon="family"
+            tile="#1C1C1E"
+            title="Family budget"
+            value={family.data ? family.data.family.name : 'Set up'}
+            last
+            onPress={() => router.push('/family')}
+          />
+        </View>
+      </View>
 
       <View>
         <SectionLabel>FeMate card</SectionLabel>
