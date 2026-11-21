@@ -1,4 +1,4 @@
-import { fromUzs, type AgentAction } from '@femate/shared';
+import type { AgentAction } from '@femate/shared';
 import { BlurView } from 'expo-blur';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -15,7 +15,7 @@ import { useCurrency } from '@/lib/currency';
 import { formatAmount, formatMoney } from '@/lib/format';
 import { useActions, useApplyRecommendation, useChat, useInsight, usePermissions, useRecommendations } from '@/lib/queries';
 import { useTheme } from '@/theme';
-import { t as tr, useT } from '@/i18n';
+import { useT } from '@/i18n';
 
 interface Msg {
   id: string;
@@ -26,15 +26,6 @@ interface Msg {
 
 // The floating pill tab bar sits above the safe-area inset.
 const TAB_BAR = TAB_BAR_SPACE;
-// The big transfer is over every level's per-action limit, so it shows Policy Guard refusing it.
-// Sent as typed, in the app language; the server's agent understands all three.
-const suggestions = (bigTransfer: string): { label: string; icon: IconName }[] => [
-  { label: tr('How am I doing this month?'), icon: 'target' },
-  { label: tr('How much is left today?'), icon: 'gauge' },
-  { label: tr('Move today’s savings'), icon: 'savings' },
-  { label: tr('Move {amount} to savings', { amount: bigTransfer }), icon: 'transfer' },
-  { label: tr('Where does my money go?'), icon: 'chart' },
-];
 // t('Read-only') t('Advisor') t('Co-pilot') t('Autopilot')
 const levelName = { L0: 'Read-only', L1: 'Advisor', L2: 'Co-pilot', L3: 'Autopilot' } as const;
 const recIcon: Record<string, IconName> = { rec_bus: 'bus', rec_food: 'food' };
@@ -112,7 +103,6 @@ export default function Assistant() {
   const composerBottom = kb > 0 ? kb : insets.bottom + TAB_BAR;
   const visibleRecs = (recs.data ?? []).filter((r) => !hidden.includes(r.id) && r.status !== 'dismissed');
   const over = insight.data?.status === 'over';
-  const started = msgs.length > 0;
 
   const applyRec = async (id: string) => {
     setApplyError(null);
@@ -243,45 +233,7 @@ export default function Assistant() {
         ) : null}
 
         <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 22, gap: 14 }}>
-          {/* Empty chat: a short welcome and a few questions to start with. */}
-          {!started ? (
-            <View style={{ flex: 1, justifyContent: 'center', gap: 14, paddingVertical: 8 }}>
-              <View style={{ gap: 4, paddingHorizontal: 4 }}>
-                <Text variant="title2">{t('Ask me anything about your money')}</Text>
-                <Text variant="footnote" color="secondary">
-                  {t('I answer with your real numbers and never move money without your OK.')}
-                </Text>
-              </View>
-              <View style={{ gap: 8 }}>
-                {suggestions(cur === 'UZS' ? '500 000' : formatMoney(fromUzs(500_000, cur), cur))
-                  .slice(1)
-                  .map((sg) => (
-                    <PressableScale
-                      key={sg.label}
-                      onPress={() => void send(sg.label)}
-                      accessibilityRole="button"
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 12,
-                        paddingVertical: 12,
-                        paddingHorizontal: 14,
-                        borderRadius: 18,
-                        borderWidth: 1,
-                        borderColor: c.separator,
-                      }}
-                    >
-                      <Icon name={sg.icon} size={18} color={c.label} strokeWidth={1.9} />
-                      <Text variant="callout" style={{ flex: 1 }}>
-                        {sg.label}
-                      </Text>
-                      <Icon name="arrowRight" size={16} color={c.chevron} strokeWidth={2} />
-                    </PressableScale>
-                  ))}
-              </View>
-            </View>
-          ) : null}
-
+          {/* Until the first message the chat area stays empty on purpose: the screen is already full. */}
           {msgs.map((m) => {
             const me = m.who === 'user';
             // A pending action decided since (here, in Agent or in Telegram) drops its Review card.
