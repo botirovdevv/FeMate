@@ -6,7 +6,7 @@ import { LogoMark, Wordmark } from '@/components/Logo';
 import { useSession } from '@/store/session';
 import { useTheme } from '@/theme';
 
-// Launch intro: the native splash shows the empty green tile; here the F draws itself and the coin
+// Launch intro: the native splash shows the empty lime tile; here the F draws itself and the coin
 // drops in, then the app routes on. The splash background colours match (app.json), so it's seamless.
 export default function Index() {
   const { token, hydrated } = useSession();

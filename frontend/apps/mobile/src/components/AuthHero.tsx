@@ -27,7 +27,7 @@ export function AuthHero({ subtitle, compact, children }: { subtitle: string; co
       </Svg>
       <View style={{ paddingTop: insets.top + (compact ? 14 : 44), paddingHorizontal: 28, gap: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <LogoMark size={compact ? 30 : 38} variant="white" animated={!compact} />
+          <LogoMark size={compact ? 30 : 38} variant="tile" animated={!compact} />
           <Wordmark size={compact ? 20 : 26} dark />
         </View>
         {compact ? null : <BrandMark />}

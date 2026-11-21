@@ -1,15 +1,16 @@
-import { Sora_700Bold } from '@expo-google-fonts/sora/700Bold';
-import { useFonts } from 'expo-font';
 import { useEffect, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-// FeMate mark, from the logo canvas (120×120 grid): an F of rounded bars, with a coin sitting where
-// the short bar is missing — the money you didn't spend. Built from Views so each piece can animate.
-const BRAND = { green: '#0E7A4B', greenDark: '#12A066', coin: '#F5A623', coinRing: '#C47D0E', ink: '#10201A', feDark: '#3DDC97' };
+// FeMate mark "Tanga F 2.0", on a 120×120 grid: an F of rounded 18-unit bars whose short bar stops
+// early, with a coin where the rest of it would be — the money you didn't spend. Every gap is 8
+// units. Built from Views so each piece can animate. Lime and black only (see theme `brand`).
+const BRAND = { lime: '#C6F432', ink: '#000000' };
 
-type Variant = 'tile' | 'white' | 'bare';
+/** `tile`: lime tile, black mark (the app icon). `ink`: black tile, lime mark. `bare`: no tile. */
+type Variant = 'tile' | 'ink' | 'bare';
 
-const BAR = 8.5; // bar corner radius in grid units
+const BAR = 9; // bar corner radius in grid units (bars are 18 thick)
+const COIN = { cx: 75, cy: 61, r: 11, ring: 5.5, ringWidth: 2.5 };
 
 export function LogoMark({
   size = 64,
@@ -22,6 +23,7 @@ export function LogoMark({
 }: {
   size?: number;
   variant?: Variant;
+  /** Only matters for `bare`: lime mark on dark backgrounds, black on light. */
   dark?: boolean;
   animated?: boolean;
   /** Tile already on screen (e.g. handed over from the native splash): animate only the F and coin. */
@@ -35,7 +37,6 @@ export function LogoMark({
     stem: new Animated.Value(animated ? 0 : 1),
     top: new Animated.Value(animated ? 0 : 1),
     mid: new Animated.Value(animated ? 0 : 1),
-    slot: new Animated.Value(animated ? 0 : 1),
     coin: new Animated.Value(animated ? 0 : 1),
   }));
 
@@ -54,7 +55,7 @@ export function LogoMark({
         Animated.timing(v, { toValue: 1, duration, easing: ease, useNativeDriver: true });
       Animated.sequence([
         grow(t.tile, keepTile ? 0 : 320),
-        Animated.stagger(110, [grow(t.stem, 300), grow(t.top, 280), grow(t.mid, 240), grow(t.slot, 200)]),
+        Animated.stagger(110, [grow(t.stem, 300), grow(t.top, 280), grow(t.mid, 240)]),
         Animated.spring(t.coin, { toValue: 1, useNativeDriver: true, damping: 11, stiffness: 160, mass: 0.8 }),
       ]).start(({ finished }) => finished && onDone?.());
     });
@@ -65,9 +66,10 @@ export function LogoMark({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const tileColor = variant === 'white' ? '#FFFFFF' : dark ? BRAND.greenDark : BRAND.green;
-  const barColor = variant === 'tile' ? '#FFFFFF' : dark && variant === 'bare' ? BRAND.feDark : BRAND.green;
-  const slotColor = variant === 'tile' ? 'rgba(255,255,255,0.45)' : 'rgba(14,122,75,0.45)';
+  const tileColor = variant === 'ink' ? BRAND.ink : BRAND.lime;
+  const markColor = variant === 'tile' ? BRAND.ink : variant === 'ink' ? BRAND.lime : dark ? BRAND.lime : BRAND.ink;
+  // The ring is the background showing through the coin; on a bare mark use the opposite brand colour.
+  const ringColor = variant === 'bare' ? (markColor === BRAND.lime ? BRAND.ink : BRAND.lime) : tileColor;
 
   const box = (x: number, y: number, w: number, h: number) => ({
     position: 'absolute' as const,
@@ -84,7 +86,7 @@ export function LogoMark({
           style={[
             box(0, 0, 120, 120),
             {
-              borderRadius: 30 * k,
+              borderRadius: 27 * k,
               backgroundColor: tileColor,
               opacity: t.tile,
               transform: [{ scale: t.tile.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }) }],
@@ -92,37 +94,30 @@ export function LogoMark({
           ]}
         />
       ) : null}
-      {/* The "saved" slot the coin drops into. */}
       <Animated.View
         style={[
-          box(56, 53, 30, 17),
-          { borderRadius: BAR * k, borderWidth: Math.max(1, 2 * k), borderStyle: 'dashed', borderColor: slotColor, opacity: t.slot },
+          box(28, 26, 18, 68),
+          { borderRadius: BAR * k, backgroundColor: markColor, transformOrigin: 'top', transform: [{ scaleY: t.stem }] },
         ]}
       />
       <Animated.View
         style={[
-          box(30, 28, 17, 64),
-          { borderRadius: BAR * k, backgroundColor: barColor, transformOrigin: 'top', transform: [{ scaleY: t.stem }] },
+          box(28, 26, 62, 18),
+          { borderRadius: BAR * k, backgroundColor: markColor, transformOrigin: 'left', transform: [{ scaleX: t.top }] },
         ]}
       />
       <Animated.View
         style={[
-          box(30, 28, 56, 17),
-          { borderRadius: BAR * k, backgroundColor: barColor, transformOrigin: 'left', transform: [{ scaleX: t.top }] },
+          box(28, 52, 28, 18),
+          { borderRadius: BAR * k, backgroundColor: markColor, transformOrigin: 'left', transform: [{ scaleX: t.mid }] },
         ]}
       />
       <Animated.View
         style={[
-          box(30, 53, 30, 17),
-          { borderRadius: BAR * k, backgroundColor: barColor, transformOrigin: 'left', transform: [{ scaleX: t.mid }] },
-        ]}
-      />
-      <Animated.View
-        style={[
-          box(69, 53, 17, 17),
+          box(COIN.cx - COIN.r, COIN.cy - COIN.r, COIN.r * 2, COIN.r * 2),
           {
-            borderRadius: 8.5 * k,
-            backgroundColor: BRAND.coin,
+            borderRadius: COIN.r * k,
+            backgroundColor: markColor,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: t.coin.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 1, 1] }),
@@ -133,9 +128,16 @@ export function LogoMark({
           },
         ]}
       >
-        {size >= 48 ? (
+        {/* The ring disappears below ~40px, where it would only read as noise. */}
+        {size > 40 ? (
           <View
-            style={{ width: 8 * k, height: 8 * k, borderRadius: 4 * k, borderWidth: Math.max(1, 1.8 * k), borderColor: BRAND.coinRing }}
+            style={{
+              width: (COIN.ring * 2 + COIN.ringWidth) * k,
+              height: (COIN.ring * 2 + COIN.ringWidth) * k,
+              borderRadius: (COIN.ring + COIN.ringWidth / 2) * k,
+              borderWidth: COIN.ringWidth * k,
+              borderColor: ringColor,
+            }}
           />
         ) : null}
       </Animated.View>
@@ -143,21 +145,15 @@ export function LogoMark({
   );
 }
 
-// "Fe" in brand green + "Mate" in ink (white on dark). Sora Bold once loaded, system bold before that.
+// "FeMate" in Manrope ExtraBold (loaded in the root layout). Light: all black. Dark: "Fe" lime,
+// "Mate" white. On a lime surface (`onBrand`): all black.
 export function Wordmark({ size = 28, dark = false, onBrand = false }: { size?: number; dark?: boolean; onBrand?: boolean }) {
-  const [loaded] = useFonts({ Sora_700Bold });
-  const fe = onBrand ? '#B8F0D3' : dark ? BRAND.feDark : BRAND.green;
-  const mate = onBrand || dark ? '#FFFFFF' : BRAND.ink;
+  const fe = onBrand ? BRAND.ink : dark ? BRAND.lime : BRAND.ink;
+  const mate = onBrand ? BRAND.ink : dark ? '#FFFFFF' : BRAND.ink;
   return (
     <Text
       accessibilityRole="header"
-      style={{
-        fontFamily: loaded ? 'Sora_700Bold' : undefined,
-        fontWeight: loaded ? undefined : '800',
-        fontSize: size,
-        letterSpacing: -size * 0.035,
-        color: mate,
-      }}
+      style={{ fontFamily: 'Manrope_800ExtraBold', fontSize: size, letterSpacing: -size * 0.035, color: mate }}
     >
       <Text style={{ color: fe }}>Fe</Text>Mate
     </Text>
