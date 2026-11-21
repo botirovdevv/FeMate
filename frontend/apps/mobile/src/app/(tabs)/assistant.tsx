@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/Icon';
 import { InsightCard } from '@/components/InsightCard';
+import { TAB_BAR_SPACE } from '@/components/PillTabBar';
 import { Button, Card, haptic, IconTile, PressableScale, Text } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { useKeyboardHeight } from '@/lib/useKeyboardHeight';
@@ -22,7 +23,8 @@ interface Msg {
   action?: AgentAction;
 }
 
-const TAB_BAR = 49;
+// The floating pill tab bar sits above the safe-area inset.
+const TAB_BAR = TAB_BAR_SPACE;
 // The big transfer is over every level's per-action limit, so it shows Policy Guard refusing it.
 const suggestions = (bigTransfer: string): { label: string; icon: IconName }[] => [
   { label: 'How am I doing this month?', icon: 'target' },

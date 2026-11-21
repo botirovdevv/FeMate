@@ -4,9 +4,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useKeyboardHeight } from '@/lib/useKeyboardHeight';
 import { space, useTheme } from '@/theme';
+import { TAB_BAR_SPACE } from './PillTabBar';
 import { Text } from './ui';
 
-export const TAB_BAR_HEIGHT = 56;
+// Room under tab screens for the floating pill tab bar.
+export const TAB_BAR_HEIGHT = TAB_BAR_SPACE;
 
 // Scrollable page with an iOS-style large title. `tabs` leaves room for the floating tab bar.
 export function Screen({

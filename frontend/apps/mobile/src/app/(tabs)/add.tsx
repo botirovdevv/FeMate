@@ -6,7 +6,7 @@ import { Animated, Easing, Pressable, Switch, TextInput, View } from 'react-nati
 
 import { Icon, type IconName } from '@/components/Icon';
 import { Screen } from '@/components/Screen';
-import { Button, Card, Chip, haptic, IconTile, PressableScale, Text } from '@/components/ui';
+import { Button, Card, Chip, font, haptic, IconTile, PressableScale, Text } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { categoryIcon } from '@/lib/categories';
 import { useCurrency } from '@/lib/currency';
@@ -204,7 +204,7 @@ export default function Add() {
           returnKeyType="done"
           onSubmitEditing={save}
           editable={!recording && !busy}
-          style={{ flex: 1, height: 60, fontSize: 19, color: c.label }}
+          style={[{ flex: 1, height: 60, fontSize: 19, color: c.label }, font('400')]}
         />
         {text ? (
           <Pressable

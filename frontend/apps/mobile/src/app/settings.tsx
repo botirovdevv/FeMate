@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/Icon';
 import { LogoMark } from '@/components/Logo';
-import { Screen } from '@/components/Screen';
+import { HeroHeader, SlatePage } from '@/components/slate';
 import { Button, Chip, haptic, IconTile, ListRow, PressableScale, SectionLabel, Text } from '@/components/ui';
 import { api, errorMessage, usingMock } from '@/lib/api';
 import { useCurrency } from '@/lib/currency';
@@ -127,62 +127,51 @@ export default function Settings() {
   // A code is done once it expires or the bot has linked the chat.
   const activeCode = code && codeLeftMin > 0 && !me.data?.telegramLinked ? code : null;
 
-  const group = { backgroundColor: c.card, borderRadius: 18, overflow: 'hidden' as const };
+  const group = { backgroundColor: c.card, borderRadius: 22, overflow: 'hidden' as const };
 
   return (
-    <Screen
-      title="Settings"
-      header={
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-          style={{ flexDirection: 'row', alignItems: 'center', height: 44, alignSelf: 'flex-start', marginBottom: -8 }}
-        >
-          <Icon name="chevronLeft" size={22} color={c.accent} strokeWidth={2.4} />
-          <Text variant="body" color="accent" style={{ fontSize: 17 }}>
-            Back
-          </Text>
-        </Pressable>
+    <SlatePage
+      hero={
+        <HeroHeader title="Profile" back>
+          <View style={{ alignItems: 'center', gap: 10, paddingBottom: 4 }}>
+            {/* Avatar in a dashed ring, like the reference profile. */}
+            <View style={{ width: 92, height: 92, borderRadius: 46, borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.35)', alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
+                <Text variant="title" color="#000000" weight="600">
+                  {(u?.name ?? 'A').charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            </View>
+            <View style={{ alignItems: 'center', gap: 2 }}>
+              <Text variant="title2" color="#FFFFFF" numberOfLines={1}>
+                {u?.name ?? '…'}
+              </Text>
+              <Text variant="footnote" color="rgba(255,255,255,0.56)" numberOfLines={1}>
+                {u?.email}
+              </Text>
+            </View>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.16)',
+                backgroundColor: 'rgba(255,255,255,0.06)',
+              }}
+            >
+              <Icon name="shield" size={13} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+              <Text variant="caption" color="rgba(255,255,255,0.7)" weight="600">
+                Agent level {perms.data?.level ?? '…'}
+              </Text>
+            </View>
+          </View>
+        </HeroHeader>
       }
     >
-      <View style={{ ...group, padding: 14, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-        <View
-          style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#0E7A4B', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Text variant="title2" color="#FFFFFF" weight="600" style={{ fontSize: 22 }}>
-            {(u?.name ?? 'A').charAt(0)}
-          </Text>
-        </View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="headline" style={{ fontSize: 19 }} numberOfLines={1}>
-            {u?.name ?? '…'}
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <Icon name="mail" size={14} color={c.secondary} strokeWidth={2} />
-            <Text variant="footnote" color="secondary" style={{ fontSize: 14, flexShrink: 1 }} numberOfLines={1}>
-              {u?.email}
-            </Text>
-          </View>
-        </View>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 4,
-            backgroundColor: c.accentTint,
-            paddingHorizontal: 8,
-            paddingVertical: 4,
-            borderRadius: 8,
-          }}
-        >
-          <Icon name="shield" size={12} color={c.accentInk} strokeWidth={2.4} />
-          <Text variant="caption" color="accentInk" weight="700">
-            {perms.data?.level ?? '…'}
-          </Text>
-        </View>
-      </View>
-
       <View>
         <SectionLabel>Appearance</SectionLabel>
         <View style={{ ...group, padding: 12, flexDirection: 'row', gap: 8 }} accessibilityRole="radiogroup">
@@ -440,7 +429,7 @@ export default function Settings() {
           FeMate 0.1 · {usingMock ? 'demo data (no server)' : 'connected to server'}
         </Text>
       </View>
-    </Screen>
+    </SlatePage>
   );
 }
 

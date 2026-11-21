@@ -7,7 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/theme';
 import { Icon, type IconName } from './Icon';
-import { haptic, LoadingDots, PressableScale, Text } from './ui';
+import { TAB_BAR_SPACE } from './PillTabBar';
+import { font, haptic, LoadingDots, PressableScale, Text } from './ui';
 
 export interface SlatePalette {
   heroBg: string;
@@ -104,11 +105,14 @@ export function SlatePage({
   children,
   refreshing,
   onRefresh,
+  tabs,
 }: {
   hero: ReactNode;
   children: ReactNode;
   refreshing?: boolean;
   onRefresh?: () => void;
+  /** A tab screen: leaves room for the floating tab bar. */
+  tabs?: boolean;
 }) {
   const s = useSlate();
   const insets = useSafeAreaInsets();
@@ -120,7 +124,7 @@ export function SlatePage({
         keyboardShouldPersistTaps="handled"
         // The hero is part of the scroll content so pull-to-refresh pulls it down with the page.
         refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={s.muted} /> : undefined}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 32 + (tabs ? TAB_BAR_SPACE : 0) }}
       >
         {hero}
         <View style={{ paddingHorizontal: 20, paddingTop: 24, gap: 28 }}>{children}</View>
@@ -486,7 +490,7 @@ export function AmountInput({
         placeholderTextColor={s.muted}
         autoFocus={autoFocus}
         maxLength={14}
-        style={{ fontSize: 44, fontWeight: '600', color: s.text, letterSpacing: -1, textAlign: 'center', minWidth: 60, fontVariant: ['tabular-nums'] }}
+        style={[{ fontSize: 44, color: s.text, letterSpacing: -1, textAlign: 'center', minWidth: 60, fontVariant: ['tabular-nums'] }, font('600')]}
       />
       <Text style={{ fontSize: 20, fontWeight: '500', color: s.muted }}>{currency}</Text>
     </View>
@@ -529,7 +533,7 @@ export function TextField({
         maxLength={maxLength}
         returnKeyType="done"
         onSubmitEditing={onSubmit}
-        style={{ height: 54, borderRadius: 16, backgroundColor: s.surface, borderWidth: 1, borderColor: s.border, paddingHorizontal: 16, fontSize: 16, color: s.text }}
+        style={[{ height: 54, borderRadius: 16, backgroundColor: s.surface, borderWidth: 1, borderColor: s.border, paddingHorizontal: 16, fontSize: 16, color: s.text }, font('400')]}
       />
     </View>
   );

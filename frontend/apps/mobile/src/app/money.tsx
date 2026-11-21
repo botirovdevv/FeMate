@@ -5,7 +5,7 @@ import { ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/Icon';
-import { Button, Chip, haptic, IconTile, PressableScale, Segmented, Text } from '@/components/ui';
+import { Button, Chip, font, haptic, PressableScale, Segmented, Text } from '@/components/ui';
 import { errorMessage, usingMock } from '@/lib/api';
 import { useCurrency } from '@/lib/currency';
 import { amountInputValue, formatAmount, formatMoney, parseAmountInput } from '@/lib/format';
@@ -66,16 +66,16 @@ function AccountPicker({
               }}
               style={{
                 flexGrow: 1,
-                padding: 12,
-                gap: 6,
-                borderRadius: 14,
+                padding: 14,
+                gap: 8,
+                borderRadius: 20,
                 borderWidth: 2,
                 borderColor: on ? c.accent : 'transparent',
                 backgroundColor: c.card,
                 opacity: off ? 0.4 : 1,
               }}
             >
-              <Icon name={ACCOUNT_ICON[t]} size={20} color={on ? c.accent : c.label} />
+              <Icon name={ACCOUNT_ICON[t]} size={20} color={c.label} />
               <View>
                 <Text variant="caption" color="secondary" numberOfLines={1}>
                   {a?.name ?? t}
@@ -181,21 +181,11 @@ export default function MoneySheet() {
     <ScrollView
       keyboardShouldPersistTaps="handled"
       style={{ backgroundColor: c.sheet }}
-      contentContainerStyle={{ paddingTop: space.xl, paddingHorizontal: space.lg, paddingBottom: insets.bottom + 24 + kb, gap: space.lg }}
+      contentContainerStyle={{ paddingTop: space.xxl + 4, paddingHorizontal: space.xxl, paddingBottom: insets.bottom + 24 + kb, gap: space.xl }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <IconTile
-          name={mode === 'add' ? 'plusCircle' : mode === 'move' ? 'transfer' : 'tune'}
-          bg={c.accentTint}
-          fg={c.accent}
-          size={44}
-          iconSize={24}
-          rounded={13}
-        />
-        <Text variant="title" accessibilityRole="header">
-          {title}
-        </Text>
-      </View>
+      <Text variant="title" accessibilityRole="header">
+        {title}
+      </Text>
 
       <Segmented<Mode>
         options={[
@@ -270,19 +260,10 @@ export default function MoneySheet() {
       ) : null}
 
       <View style={{ gap: 8 }}>
-        <Text variant="footnote" color="secondary" weight="600">
+        <Text variant="footnote" color="secondary" weight="600" style={{ textAlign: 'center' }}>
           {mode === 'set' ? `What’s in ${nameOf(target)} right now` : 'Amount'}
         </Text>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'baseline',
-            gap: 8,
-            borderBottomWidth: 2,
-            borderBottomColor: c.accent,
-            paddingBottom: 8,
-          }}
-        >
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 8, paddingVertical: 6 }}>
           <TextInput
             accessibilityLabel="Amount"
             value={text}
@@ -295,17 +276,12 @@ export default function MoneySheet() {
             keyboardType="decimal-pad"
             autoFocus={mode !== 'set'}
             selectTextOnFocus
-            style={{
-              flex: 1,
-              fontSize: 36,
-              fontWeight: '700',
-              letterSpacing: -0.6,
-              color: c.label,
-              fontVariant: ['tabular-nums'],
-              padding: 0,
-            }}
+            style={[
+              { minWidth: 60, maxWidth: '80%', textAlign: 'center', fontSize: 48, letterSpacing: -1, color: c.label, fontVariant: ['tabular-nums'], padding: 0 },
+              font('600'),
+            ]}
           />
-          <Text variant="title2" color="secondary" weight="600">
+          <Text variant="title2" color="secondary" weight="500">
             {cur}
           </Text>
         </View>
@@ -342,7 +318,7 @@ export default function MoneySheet() {
         </Text>
       ) : null}
 
-      <Button title={buttonTitle} icon="check" onPress={submit} loading={busy} disabled={!canSubmit || busy} />
+      <Button title={buttonTitle} onPress={submit} loading={busy} disabled={!canSubmit || busy} />
     </ScrollView>
   );
 }
