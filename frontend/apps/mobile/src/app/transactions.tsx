@@ -128,7 +128,7 @@ export default function Transactions() {
                   </View>
                 </View>
                 <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                  <Text variant="body" weight="600" tabular color={t.category === 'transfer' ? c.accent : c.label}>
+                  <Text variant="body" weight="600" tabular color={t.direction === 'in' && t.category !== 'transfer' ? c.positive : t.category === 'transfer' ? c.secondary : c.label}>
                     {t.direction === 'in' ? '+' : t.category === 'transfer' ? '' : '−'}
                     {formatAmount(t.amount, cur)}
                   </Text>

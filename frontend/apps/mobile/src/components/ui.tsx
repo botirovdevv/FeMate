@@ -1,10 +1,12 @@
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useState } from 'react';
+import { useEffect } from 'react';
 import {
-  ActivityIndicator,
   Animated,
+  Easing,
   Platform,
   Pressable,
+  StyleSheet,
   Text as RNText,
   View,
   type PressableProps,
@@ -14,7 +16,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { radius, space, type, useTheme, type Palette } from '@/theme';
+import { fontFamily, radius, space, type, useTheme, type Palette } from '@/theme';
 import { Icon, type IconName } from './Icon';
 
 export function haptic(kind: 'light' | 'medium' | 'success' | 'warning' = 'light') {
@@ -36,17 +38,42 @@ export function Text({
 }: TextProps & { variant?: Variant; color?: keyof Palette | (string & {}); weight?: TextStyle['fontWeight']; tabular?: boolean }) {
   const { c } = useTheme();
   const resolved = color ? ((c as unknown as Record<string, string>)[color] ?? color) : c.label;
+  const flat = StyleSheet.flatten([type[variant] as TextStyle, { color: resolved }, weight ? { fontWeight: weight } : null, style]);
+  return <RNText {...rest} style={[flat, font(flat.fontWeight), tabular ? { fontVariant: ['tabular-nums'] } : null]} />;
+}
+
+/**
+ * The Plus Jakarta Sans file for a weight. fontWeight is reset, since a custom family plus a weight makes iOS
+ * look for a variant that doesn't exist and Android fake-bold the glyphs.
+ */
+export function font(weight?: TextStyle['fontWeight']): TextStyle {
+  return { fontFamily: fontFamily(weight), fontWeight: 'normal' };
+}
+
+/** Two pulsing dots, the loading state of pill buttons. */
+export function LoadingDots({ color }: { color: string }) {
+  const v = useState(() => new Animated.Value(0))[0];
+  useEffect(() => {
+    const loop = Animated.loop(Animated.timing(v, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }));
+    loop.start();
+    return () => loop.stop();
+  }, [v]);
   return (
-    <RNText
-      {...rest}
-      style={[
-        type[variant] as TextStyle,
-        { color: resolved },
-        weight ? { fontWeight: weight } : null,
-        tabular ? { fontVariant: ['tabular-nums'] } : null,
-        style,
-      ]}
-    />
+    <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }} accessibilityLabel="Loading">
+      {[0, 1].map((i) => (
+        <Animated.View
+          key={i}
+          style={{
+            width: 9,
+            height: 9,
+            borderRadius: 5,
+            backgroundColor: color,
+            opacity: v.interpolate({ inputRange: [0, 0.5, 1], outputRange: i ? [0.4, 1, 0.4] : [1, 0.4, 1] }),
+            transform: [{ scale: v.interpolate({ inputRange: [0, 0.5, 1], outputRange: i ? [0.8, 1.15, 0.8] : [1.15, 0.8, 1.15] }) }],
+          }}
+        />
+      ))}
+    </View>
   );
 }
 
@@ -107,10 +134,10 @@ export function Button({
     tinted: [c.accentTint, c.accentInk],
     danger: [c.danger, '#FFFFFF'],
     strong: [c.strong, c.onStrong],
-    plain: ['transparent', c.accent],
+    plain: ['transparent', c.label],
   }[variant];
   const height = { large: 54, medium: 44, small: 36 }[size];
-  const font = { large: 17, medium: 15, small: 14 }[size];
+  const fontSize = { large: 16, medium: 15, small: 14 }[size];
   return (
     <PressableScale
       onPress={onPress}
@@ -121,32 +148,32 @@ export function Button({
         {
           height,
           paddingHorizontal: { large: 20, medium: 16, small: 12 }[size],
-          borderRadius: size === 'large' ? 16 : height / 2,
+          borderRadius: height / 2,
           backgroundColor: colors[0],
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
           gap: 8,
-          opacity: disabled ? 0.5 : 1,
+          opacity: disabled ? 0.4 : 1,
         },
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={colors[1]} />
+        <LoadingDots color={colors[1]!} />
       ) : (
         <>
-          {icon ? <Icon name={icon} size={font + 2} color={colors[1]!} strokeWidth={2.4} /> : null}
+          {icon ? <Icon name={icon} size={fontSize + 2} color={colors[1]!} strokeWidth={2} /> : null}
           {/* One line always: a narrow button shrinks its label a little instead of wrapping it. */}
           <RNText
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.8}
-            style={{ color: colors[1], fontSize: font, fontWeight: '600', flexShrink: 1 }}
+            style={[{ color: colors[1], fontSize, flexShrink: 1 }, font('600')]}
           >
             {title}
           </RNText>
-          {iconRight ? <Icon name={iconRight} size={font + 1} color={colors[1]!} strokeWidth={2.4} /> : null}
+          {iconRight ? <Icon name={iconRight} size={fontSize + 1} color={colors[1]!} strokeWidth={2} /> : null}
         </>
       )}
     </PressableScale>
@@ -164,7 +191,6 @@ export function IconTile({
   fg,
   size = 36,
   iconSize,
-  rounded = 10,
 }: {
   name: IconName;
   bg: string;
@@ -174,15 +200,16 @@ export function IconTile({
   rounded?: number;
 }) {
   return (
-    <View style={{ width: size, height: size, borderRadius: rounded, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
-      <Icon name={name} size={iconSize ?? Math.round(size * 0.55)} color={fg} />
+    // Always round, like the reference design; `rounded` is kept in the props for older call sites.
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
+      <Icon name={name} size={iconSize ?? Math.round(size * 0.5)} color={fg} />
     </View>
   );
 }
 
 export function SectionLabel({ children }: { children: string }) {
   return (
-    <Text variant="sectionLabel" color="secondary" style={{ paddingHorizontal: space.lg, marginBottom: space.sm }}>
+    <Text variant="headline" accessibilityRole="header" style={{ paddingHorizontal: space.xs, marginBottom: space.md }}>
       {children}
     </Text>
   );
@@ -198,22 +225,22 @@ export function Chip({ label, icon, selected, onPress }: { label: string; icon?:
       accessibilityRole="button"
       accessibilityState={{ selected: !!selected }}
       style={{
-        height: 36,
-        paddingHorizontal: 12,
-        borderRadius: 18,
+        height: 40,
+        paddingHorizontal: 14,
+        borderRadius: 20,
         backgroundColor: bg,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
       }}
     >
-      {icon ? <Icon name={icon} size={16} color={selected ? fg : c.accent} strokeWidth={2} /> : null}
-      <RNText style={{ color: fg, fontSize: 14, fontWeight: '600' }}>{label}</RNText>
+      {icon ? <Icon name={icon} size={16} color={fg} strokeWidth={1.9} /> : null}
+      <RNText style={[{ color: fg, fontSize: 14 }, font('600')]}>{label}</RNText>
     </PressableScale>
   );
 }
 
-export function ProgressBar({ value, color, track, height = 6 }: { value: number; color: string; track: string; height?: number }) {
+export function ProgressBar({ value, color, track, height = 8 }: { value: number; color: string; track: string; height?: number }) {
   return (
     <View style={{ height, borderRadius: height / 2, backgroundColor: track, overflow: 'hidden' }}>
       <View style={{ height, borderRadius: height / 2, width: `${Math.max(0, Math.min(1, value)) * 100}%`, backgroundColor: color }} />
@@ -223,7 +250,6 @@ export function ProgressBar({ value, color, track, height = 6 }: { value: number
 
 export function ListRow({
   icon,
-  tile,
   title,
   value,
   valueColor,
@@ -244,17 +270,22 @@ export function ListRow({
 }) {
   const { c } = useTheme();
   const content = (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 14, gap: 12, minHeight: 52 }}>
-      {icon ? <IconTile name={icon} bg={tile ?? c.accent} fg="#FFFFFF" size={30} iconSize={18} rounded={8} /> : null}
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 16, gap: 12, minHeight: 56 }}>
+      {/* Plain line icon (Profile style); `tile` colors from the old design are ignored. */}
+      {icon ? (
+        <View style={{ width: 28, alignItems: 'center' }}>
+          <Icon name={icon} size={21} color={destructive ? c.danger : c.label} strokeWidth={1.8} />
+        </View>
+      ) : null}
       <View
         style={{
           flex: 1,
-          minHeight: 52,
+          minHeight: 56,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingRight: 12,
-          borderBottomWidth: last ? 0 : 0.5,
+          borderBottomWidth: last ? 0 : 1,
           borderBottomColor: c.separator,
         }}
       >
@@ -268,7 +299,7 @@ export function ListRow({
             </Text>
           ) : null}
           {right}
-          {onPress && !destructive ? <Icon name="chevronRight" size={14} color={c.chevron} strokeWidth={2.6} /> : null}
+          {onPress && !destructive ? <Icon name="chevronRight" size={16} color={c.chevron} strokeWidth={2} /> : null}
         </View>
       </View>
     </View>
@@ -294,11 +325,11 @@ export function Segmented<T extends string>({
   value: T;
   onChange: (v: T) => void;
 }) {
-  const { c, dark } = useTheme();
+  const { c } = useTheme();
   return (
     <View
       accessibilityRole="tablist"
-      style={{ flexDirection: 'row', padding: 2, borderRadius: 10, backgroundColor: dark ? c.fill : '#E3E3E8' }}
+      style={{ flexDirection: 'row', padding: 4, borderRadius: 24, backgroundColor: c.fill }}
     >
       {options.map((o) => {
         const on = o.value === value;
@@ -313,20 +344,17 @@ export function Segmented<T extends string>({
             }}
             style={{
               flex: 1,
-              height: 32,
-              borderRadius: 8,
-              backgroundColor: on ? (dark ? '#636366' : '#FFFFFF') : 'transparent',
+              height: 38,
+              borderRadius: 19,
+              backgroundColor: on ? c.accent : 'transparent',
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 6,
-              ...(on
-                ? { shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 }
-                : null),
             }}
           >
-            {o.icon ? <Icon name={o.icon} size={14} color={c.label} strokeWidth={2.2} /> : null}
-            <RNText style={{ color: c.label, fontSize: 14, fontWeight: '600' }}>{o.label}</RNText>
+            {o.icon ? <Icon name={o.icon} size={15} color={on ? c.onAccent : c.secondary} strokeWidth={2} /> : null}
+            <RNText style={[{ color: on ? c.onAccent : c.secondary, fontSize: 14 }, font('600')]}>{o.label}</RNText>
           </Pressable>
         );
       })}
@@ -369,7 +397,7 @@ export function Banner({
   const { c } = useTheme();
   const t = {
     warn: { bg: c.warnTint, ink: c.warnInk, dot: c.warn, onDot: c.onWarn },
-    success: { bg: c.accentTint, ink: c.accentInk, dot: c.accent, onDot: c.onAccent },
+    success: { bg: c.positiveTint, ink: c.positiveInk, dot: c.positive, onDot: '#FFFFFF' },
     danger: { bg: c.dangerTint, ink: c.dangerInk, dot: c.danger, onDot: '#FFFFFF' },
   }[tone];
   const body = (
@@ -380,11 +408,11 @@ export function Banner({
         gap: 12,
         padding: 14,
         paddingHorizontal: 16,
-        borderRadius: radius.lg,
+        borderRadius: radius.xl,
         backgroundColor: t.bg,
       }}
     >
-      <IconTile name={icon} bg={t.dot} fg={t.onDot} size={36} iconSize={20} rounded={18} />
+      <IconTile name={icon} bg={t.dot} fg={t.onDot} size={36} iconSize={19} />
       <View style={{ flex: 1, gap: 2 }}>
         <Text variant="callout" weight="600">
           {title}

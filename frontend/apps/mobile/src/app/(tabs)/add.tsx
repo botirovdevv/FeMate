@@ -369,8 +369,8 @@ export default function Add() {
                 {categoryLabel[saved.tx.category]}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                <Icon name="check" size={13} color={c.accent} strokeWidth={2.6} />
-                <Text variant="footnote" color="accent" weight="600">
+                <Icon name="check" size={13} color={c.positive} strokeWidth={2.6} />
+                <Text variant="footnote" color="positive" weight="600">
                   Added to today{saved.tx.familyId ? ' · family budget' : ''}
                   {saved.transcript ? ' from your voice note' : ''}
                 </Text>

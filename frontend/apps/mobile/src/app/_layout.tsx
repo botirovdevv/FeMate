@@ -1,4 +1,10 @@
+import { PlusJakartaSans_400Regular } from '@expo-google-fonts/plus-jakarta-sans/400Regular';
+import { PlusJakartaSans_500Medium } from '@expo-google-fonts/plus-jakarta-sans/500Medium';
+import { PlusJakartaSans_600SemiBold } from '@expo-google-fonts/plus-jakarta-sans/600SemiBold';
+import { PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans/700Bold';
+import { PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans/800ExtraBold';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { useFonts } from 'expo-font';
 import { router, Stack, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
@@ -34,6 +40,13 @@ export default function RootLayout() {
   const hydrate = useSession((s) => s.hydrate);
   const { c, dark } = useTheme();
   const slate = useSlate();
+  const [fontsLoaded, fontError] = useFonts({
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
+  });
 
   useEffect(() => {
     void hydrate();
@@ -46,6 +59,10 @@ export default function RootLayout() {
     if (prevToken.current && !token) router.replace('/login');
     prevToken.current = token;
   }, [token]);
+
+  // Bundled fonts load in a moment; until then keep the (black) background instead of flashing the system font.
+  // A load failure falls back to the system font rather than blocking the app.
+  if (!fontsLoaded && !fontError) return <View style={{ flex: 1, backgroundColor: '#000000' }} />;
 
   return (
     <SafeAreaProvider>

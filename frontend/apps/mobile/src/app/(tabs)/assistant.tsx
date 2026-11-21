@@ -139,7 +139,7 @@ export default function Assistant() {
               <View style={{ flex: 1, gap: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <Icon name="trend" size={13} color={c.accent} strokeWidth={2.4} />
-                  <Text variant="footnote" color="accent" weight="600" tabular>
+                  <Text variant="footnote" color="positive" weight="600" tabular>
                     Save {formatMoney(r.monthlySaving, cur)} / month
                   </Text>
                 </View>

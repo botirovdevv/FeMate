@@ -1,13 +1,13 @@
 // "Slate" style building blocks: a black hero block over a white page, round icon actions, black pill buttons.
 // The Family screens use them first; the app-wide redesign will reuse them.
 import { router } from 'expo-router';
-import { useEffect, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Animated, Easing, Pressable, RefreshControl, ScrollView, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
+import type { ReactNode } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/theme';
 import { Icon, type IconName } from './Icon';
-import { haptic, PressableScale, Text } from './ui';
+import { haptic, LoadingDots, PressableScale, Text } from './ui';
 
 export interface SlatePalette {
   heroBg: string;
@@ -30,51 +30,29 @@ export interface SlatePalette {
   warnInk: string;
 }
 
-const LIGHT: SlatePalette = {
-  heroBg: '#000000',
-  heroText: '#FFFFFF',
-  heroMuted: 'rgba(255,255,255,0.56)',
-  heroButton: '#1C1C1E',
-  heroTrack: 'rgba(255,255,255,0.18)',
-  bg: '#FFFFFF',
-  surface: '#F6F5F3',
-  border: '#ECEBE9',
-  text: '#0A0A0A',
-  muted: '#8A8A8E',
-  primary: '#000000',
-  onPrimary: '#FFFFFF',
-  secondaryBg: '#F1F0EE',
-  positive: '#1E9E5A',
-  danger: '#C62828',
-  dangerTint: '#FDECEA',
-  warnTint: '#FFF4E5',
-  warnInk: '#8A4A00',
-};
-
-// Dark mode: the page goes black and the hero lifts to a dark grey so the two still read as separate layers.
-const DARK: SlatePalette = {
-  heroBg: '#1A1A1C',
-  heroText: '#FFFFFF',
-  heroMuted: 'rgba(255,255,255,0.56)',
-  heroButton: '#2C2C2F',
-  heroTrack: 'rgba(255,255,255,0.16)',
-  bg: '#000000',
-  surface: '#121214',
-  border: '#262628',
-  text: '#F4F4F5',
-  muted: '#8E8E93',
-  primary: '#FFFFFF',
-  onPrimary: '#000000',
-  secondaryBg: '#1C1C1E',
-  positive: '#34C77B',
-  danger: '#FF6B61',
-  dangerTint: '#3A1614',
-  warnTint: '#33240F',
-  warnInk: '#F5B65C',
-};
-
+// Derived from the app palette, so the Slate pieces and the restyled shared components always match.
 export function useSlate(): SlatePalette {
-  return useTheme().dark ? DARK : LIGHT;
+  const { c, dark } = useTheme();
+  return {
+    heroBg: c.hero,
+    heroText: '#FFFFFF',
+    heroMuted: 'rgba(255,255,255,0.56)',
+    heroButton: dark ? '#2C2C2F' : '#1C1C1E',
+    heroTrack: dark ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.18)',
+    bg: c.bg,
+    surface: c.card,
+    border: c.separator,
+    text: c.label,
+    muted: c.secondary,
+    primary: c.accent,
+    onPrimary: c.onAccent,
+    secondaryBg: c.fill,
+    positive: c.positive,
+    danger: c.danger,
+    dangerTint: c.dangerTint,
+    warnTint: c.warnTint,
+    warnInk: c.warnInk,
+  };
 }
 
 /** Round button on the hero (back, settings, +). */
@@ -212,32 +190,6 @@ export function CircleAction({
         {label}
       </Text>
     </PressableScale>
-  );
-}
-
-function LoadingDots({ color }: { color: string }) {
-  const v = useState(() => new Animated.Value(0))[0];
-  useEffect(() => {
-    const loop = Animated.loop(Animated.timing(v, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }));
-    loop.start();
-    return () => loop.stop();
-  }, [v]);
-  return (
-    <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-      {[0, 1].map((i) => (
-        <Animated.View
-          key={i}
-          style={{
-            width: 10,
-            height: 10,
-            borderRadius: 5,
-            backgroundColor: color,
-            opacity: v.interpolate({ inputRange: [0, 0.5, 1], outputRange: i ? [0.4, 1, 0.4] : [1, 0.4, 1] }),
-            transform: [{ scale: v.interpolate({ inputRange: [0, 0.5, 1], outputRange: i ? [0.8, 1.15, 0.8] : [1.15, 0.8, 1.15] }) }],
-          }}
-        />
-      ))}
-    </View>
   );
 }
 

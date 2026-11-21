@@ -17,8 +17,8 @@ export function InsightCard({ insight, compact }: { insight: DailyInsight; compa
   const { c } = useTheme();
   const cur = useCurrency();
   const over = insight.status === 'over';
-  const tint = over ? c.warnTint : c.accentTint;
-  const ink = over ? c.warnInk : c.accentInk;
+  const tint = over ? c.warnTint : c.positiveTint;
+  const ink = over ? c.warnInk : c.positiveInk;
   const tips = compact ? insight.tips.slice(0, 1) : insight.tips;
 
   const body = (
@@ -64,7 +64,7 @@ export function InsightCard({ insight, compact }: { insight: DailyInsight; compa
               <View style={{ flex: 1, gap: 2 }}>
                 <Text variant="callout">{t.text}</Text>
                 {t.saving > 0 ? (
-                  <Text variant="footnote" color="accent" weight="600" tabular>
+                  <Text variant="footnote" color="positive" weight="600" tabular>
                     Saves about {formatMoney(t.saving, cur)} this month
                   </Text>
                 ) : null}
